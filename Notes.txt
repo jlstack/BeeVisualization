@@ -1,0 +1,2 @@
+This site contains info on how to use ffmpeg through a subprocess in Python:
+http://stackoverflow.com/questions/25955322/subprocess-call-ffmpeg-command-line
