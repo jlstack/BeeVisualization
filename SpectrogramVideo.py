@@ -12,7 +12,28 @@ nfft = 2048
 noverlap = 1024
 
 
-def create_specgrams(input_dir):
+def get_data(path):
+    if path.endswith(".mp3") or path.endswith(".flacc"):
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        sound = AudioSegment.from_mp3(path)
+        sound.export(temp.name, format="wav")
+        bee_rate, bee_data = read(temp.name)
+        temp.close()
+        return bee_rate, bee_data
+
+
+def create_videos(input_dir):
+    wd = os.getcwd()
+    print wd, input_dir + "/Specgrams/"
+    os.chdir(input_dir + "/Specgrams/")
+    subprocess.Popen("ffmpeg -r 24 -i %05d_left.jpeg left.mp4", shell=True,
+                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    subprocess.Popen("ffmpeg -r 24 -i %05d_right.jpeg right.mp4", shell=True,
+                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    os.chdir(wd)
+
+
+def main(input_dir):
     if os.path.isdir(input_dir + "/audio/"):
         audio_dir = input_dir + "/audio/"
         spec_dir = input_dir + "/Specgrams/"
@@ -41,25 +62,10 @@ def create_specgrams(input_dir):
                 plt.savefig(spec_dir + "%05d_right.jpeg" % right_index)
                 plt.close()
                 right_index += 1
-            print "file",file_index,"completed"
+            print "file", file_index, "completed"
         create_videos(input_dir)
 
 
-def get_data(path):
-    if path.endswith(".mp3"):
-        temp = tempfile.NamedTemporaryFile(suffix=".wav")
-        sound = AudioSegment.from_mp3(path)
-        sound.export(temp.name, format="wav")
-        (bee_rate, bee_data) = read(temp.name)
-        temp.close()
-        return (bee_rate, bee_data)
-
-
-def create_videos(input_dir):
-    wd = os.getcwd()
-    os.chdir(input_dir + "/Specgrams/")
-    subprocess.Popen("ffmpeg -r 24 -i %05d_left.jpeg left.mp4", shell=True,
-                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    subprocess.Popen("ffmpeg -r 24 -i %05d_right.jpeg right.mp4", shell=True,
-                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    os.chdir(wd)
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1])

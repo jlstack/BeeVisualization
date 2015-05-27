@@ -16,7 +16,7 @@ import SpectrogramVideo as s
 This function opens the connection and gets the files to be parsed.
 The path parameter is the directory that has the mp3 files.
 '''
-def get_file(path):
+def main(path):
     #Connect to the cs server with the proper credentials.
     session = FTP()
     session.connect("cs.appstate.edu")
@@ -24,6 +24,7 @@ def get_file(path):
     passwd = getpass.getpass("Type your password.")
     session.login(user, passwd)
     session.cwd(path)
+    """
     #Gets the mp3 files in the passed in directory
     match = "*.mp3"
     count = 1
@@ -40,7 +41,13 @@ def get_file(path):
         count += 1
         #Close the StringIO
         read.close()
+    """
+    print path
     s.create_specgrams(path)
     #Close the FTP connection
     session.quit()
     print "Done."
+
+if __name__ == "__main__":
+    import sys 
+    main(sys.argv[1])
