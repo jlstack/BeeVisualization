@@ -40,11 +40,13 @@ def main(input_dir):
         left_index = 1
         right_index = 1
         file_index = 1
-        for recording in os.listdir(audio_dir).sort():
-            if recording.endswith(".wav"):
-                (bee_rate, bee_data) = read(audio_dir + recording)
-            elif recording.endswith(".mp3"):
-                (bee_rate, bee_data) = get_data(audio_dir + recording)
+        recordings = os.listdir(audio_dir)
+        recordings = recordings.sort()
+        for rec in recordings:
+            if rec.endswith(".wav"):
+                (bee_rate, bee_data) = read(audio_dir + rec)
+            elif rec.endswith(".mp3"):
+                (bee_rate, bee_data) = get_data(audio_dir + rec)
             else:
                 print "not an audio file"
                 continue
@@ -53,8 +55,8 @@ def main(input_dir):
                 os.makedirs(spec_dir)
 
             plt.specgram(bee_data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
-            plt.title(os.path.splitext(recording)[0])
-            if "left" in recording:
+            plt.title(os.path.splitext(rec)[0])
+            if "left" in rec:
                 plt.savefig(spec_dir + "%05d_left.jpeg" % left_index)
                 plt.close()
                 left_index += 1
