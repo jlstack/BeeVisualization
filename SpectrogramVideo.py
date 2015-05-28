@@ -68,7 +68,7 @@ def create_videos(input_dir):
                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     subprocess.Popen("ffmpeg -r 24 -i %05d_right.jpeg right.mp4", shell=True,
                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    os.chdir(input_dir + "../Spectrums/")
+    os.chdir(input_dir + "/Spectrums/")
     subprocess.Popen("ffmpeg -r 24 -i %05d_left.jpeg left.mp4", shell=True,
                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     subprocess.Popen("ffmpeg -r 24 -i %05d_right.jpeg right.mp4", shell=True,
@@ -116,4 +116,4 @@ def main(input_dir):
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1])
+main("/Users/lukestack/PycharmProjects/BeeVisualization/15-04-2015Org/")
