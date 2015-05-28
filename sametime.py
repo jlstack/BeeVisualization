@@ -1,11 +1,9 @@
 """
 sametime.py
-
 This program opens up a connection to SSH into the cs.appstate.edu
 server.  It will be utilized to get bee videos from the same time on
 different dates.
-
-The list_files(path, time) function is used to get the audio file
+The main(path, time) function is used to get the audio files
 that will be visualized given a certain time desired.
 """
 
@@ -18,7 +16,7 @@ The path parameter is the directory that has the directories of mp3 files.
 The time parameter is the time that you want, in military time.
 Ex. 19:50 is 7:50 PM.
 '''
-def list_files(path, time):
+def main(path, time):
     #Connect to the cs server with the proper credentials.
     session = FTP()
     session.connect("cs.appstate.edu")
@@ -58,4 +56,4 @@ def list_files(path, time):
 
 if __name__ == "__main__":
     import sys
-    list_files(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2])
