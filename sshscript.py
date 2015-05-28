@@ -11,7 +11,6 @@ that is to be visualized.
 from ftplib import FTP
 import getpass
 import StringIO
-import SpectrogramVideo as s
 '''
 This function opens the connection and gets the files to be parsed.
 The path parameter is the directory that has the mp3 files.
@@ -23,6 +22,7 @@ def get_file(path):
     user = raw_input("Type your username.")
     passwd = getpass.getpass("Type your password.")
     session.login(user, passwd)
+    #Set the current directory to the one passed in
     session.cwd(path)
     #Gets the mp3 files in the passed in directory
     match = "*.mp3"
@@ -40,7 +40,6 @@ def get_file(path):
         count += 1
         #Close the StringIO
         read.close()
-    s.create_specgrams(path)
     #Close the FTP connection
     session.quit()
     print "Done."
