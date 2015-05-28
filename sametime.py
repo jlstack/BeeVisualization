@@ -5,7 +5,7 @@ This program opens up a connection to SSH into the cs.appstate.edu
 server.  It will be utilized to get bee videos from the same time on
 different dates.
 
-The main(path, time) function is used to get the audio files
+The list_files(path, time) function is used to get the audio file
 that will be visualized given a certain time desired.
 """
 
@@ -18,7 +18,7 @@ The path parameter is the directory that has the directories of mp3 files.
 The time parameter is the time that you want, in military time.
 Ex. 19:50 is 7:50 PM.
 '''
-def main(path, time):
+def list_files(path, time):
     #Connect to the cs server with the proper credentials.
     session = FTP()
     session.connect("cs.appstate.edu")
@@ -58,4 +58,4 @@ def main(path, time):
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1], sys.argv[2])
+    list_files(sys.argv[1], sys.argv[2])
