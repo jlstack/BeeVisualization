@@ -9,7 +9,7 @@ import subprocess
 import numpy as np
 
 fs = 44100.0
-nfft = 32768  # 8192
+nfft = 32768
 noverlap = 16384
 
 
@@ -101,12 +101,12 @@ def main(input_dir):
             if "left" in rec:
                 output = "%05d_left.jpeg" % left_index
                 create_spectrum(bee_data, os.path.splitext(rec)[0], spec_dir + output)
-                # create_spectrogram(bee_data, os.path.splitext(rec)[0], specgram_dir + output)
+                create_spectrogram(bee_data, os.path.splitext(rec)[0], specgram_dir + output)
                 left_index += 1
             else:
                 output = "%05d_right.jpeg" % right_index
                 create_spectrum(bee_data, os.path.splitext(rec)[0], spec_dir + output)
-                # create_spectrogram(bee_data, os.path.splitext(rec)[0], specgram_dir + output)
+                create_spectrogram(bee_data, os.path.splitext(rec)[0], specgram_dir + output)
                 right_index += 1
 
             print "file", file_index, "completed"
@@ -114,6 +114,6 @@ def main(input_dir):
         create_videos(input_dir)
 
 
-#if __name__ == "__main__":
-#    import sys
-main("/Users/lukestack/PycharmProjects/BeeVisualization/15-04-2015Org/")
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1])
