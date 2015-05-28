@@ -1,9 +1,11 @@
 """
 sshscript.py
-
 This program opens up a connection to SSH into the cs.appstate.edu
 server.  It will be utilized to get the bee videos for later parsing.
 
+=======
+The get_file(filename) function is used to get the audio file
+that is to be visualized.
 """
 
 from ftplib import FTP, error_perm
