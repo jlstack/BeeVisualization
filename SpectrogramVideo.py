@@ -77,6 +77,6 @@ def main(input_dir):
         create_videos(input_dir)
 
 
-    """if __name__ == "__main__":
-    import sys"""
-main("/Users/lukestack/PycharmProjects/BeeVisualization/15-04-2015Org/")
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1])
