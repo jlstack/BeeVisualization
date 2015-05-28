@@ -2,7 +2,8 @@
 sametime.py
 
 This program opens up a connection to SSH into the cs.appstate.edu
-server.  It will be utilized to get the bee videos for later parsing.
+server.  It will be utilized to get bee videos from the same time on
+different dates.
 
 The main(path, time) function is used to get the audio files
 that will be visualized given a certain time desired.
