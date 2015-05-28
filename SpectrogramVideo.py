@@ -6,10 +6,46 @@ import matplotlib.pyplot as plt
 import tempfile
 from pydub import AudioSegment
 import subprocess
+import numpy as np
 
 fs = 44100.0
-nfft = 2048
-noverlap = 1024
+nfft = 32768  # 8192
+noverlap = 16384
+
+
+def create_spectrum(data, title=None, name=None, save=True, show=False):
+    Pxx, freqs, bins, img = plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
+    plt.close()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.plot(freqs, np.mean(Pxx, axis=1))
+    if title is not None:
+        ax.set_title(title)
+    ax.set_xlim(0,600)
+    ax.set_ylim(0,35000)
+    ax.set_xlabel("Frequencies (hz)")
+    ax.set_ylabel("Count")
+    if show:
+        plt.show()
+    if save and name is not None:
+        plt.savefig(name)
+    plt.close()
+
+def create_spectrogram(data, title=None, name=None, save=True, show=False):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
+    if title is not None:
+        ax.set_title(title)
+    ax.set_ylim(0, 600)
+    ax.set_xlabel("Time (sec)")
+    ax.set_ylabel("Frequencies (hz)")
+    if show:
+        plt.show()
+    if save and name is not None:
+        plt.savefig(name)
+    plt.close()
 
 
 def get_data(path):
@@ -32,13 +68,19 @@ def create_videos(input_dir):
                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     subprocess.Popen("ffmpeg -r 24 -i %05d_right.jpeg right.mp4", shell=True,
                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    os.chdir(input_dir + "../Spectrums/")
+    subprocess.Popen("ffmpeg -r 24 -i %05d_left.jpeg left.mp4", shell=True,
+                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    subprocess.Popen("ffmpeg -r 24 -i %05d_right.jpeg right.mp4", shell=True,
+                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     os.chdir(wd)
 
 
 def main(input_dir):
     if os.path.isdir(input_dir + "/audio/"):
         audio_dir = input_dir + "/audio/"
-        spec_dir = input_dir + "/Specgrams/"
+        specgram_dir = input_dir + "/Specgrams/"
+        spec_dir = input_dir + "/Spectrums/"
         left_index = 1
         right_index = 1
         file_index = 1
@@ -51,32 +93,27 @@ def main(input_dir):
                 print "not an audio file"
                 continue
 
+            if not os.path.isdir(specgram_dir):
+                os.makedirs(specgram_dir)
             if not os.path.isdir(spec_dir):
                 os.makedirs(spec_dir)
 
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.specgram(bee_data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
-            #plt.specgram(bee_data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
-            # Pxx, freqs, bins, img = plt.specgram(bee_data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
-            # print max(freqs)
-
-            # plt.specgram(bee_data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
-            ax.set_title(os.path.splitext(rec)[0])
-            ax.set_ylim(150, 500)
             if "left" in rec:
-                plt.savefig(spec_dir + "%05d_left.jpeg" % left_index)
-                plt.close()
+                output = "%05d_left.jpeg" % left_index
+                create_spectrum(bee_data, os.path.splitext(rec)[0], spec_dir + output)
+                # create_spectrogram(bee_data, os.path.splitext(rec)[0], specgram_dir + output)
                 left_index += 1
             else:
-                plt.savefig(spec_dir + "%05d_right.jpeg" % right_index)
-                plt.close()
+                output = "%05d_right.jpeg" % right_index
+                create_spectrum(bee_data, os.path.splitext(rec)[0], spec_dir + output)
+                # create_spectrogram(bee_data, os.path.splitext(rec)[0], specgram_dir + output)
                 right_index += 1
+
             print "file", file_index, "completed"
             file_index += 1
         create_videos(input_dir)
 
 
-if __name__ == "__main__":
-    import sys
-    main(sys.argv[1])
+#if __name__ == "__main__":
+#    import sys
+main("/Users/lukestack/PycharmProjects/BeeVisualization/15-04-2015Org/")
