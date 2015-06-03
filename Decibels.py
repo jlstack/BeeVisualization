@@ -23,12 +23,14 @@ def get_data(path):
     temp.close()
     return bee_rate, bee_data
 
-def get_data_for_hour(audio_dir, keyword):
+
+def get_data_for_hour_range(audio_dir, range, keyword):
     title = None
     combined_wav = None
     last_recording = None
     for rec in os.listdir(audio_dir):
-        if keyword in rec:
+        if keyword in rec and range[0] <= int(rec[:2]) <= range[1]:
+            print rec
             samprate, wav_data = get_data(audio_dir + rec)
             if title is None:
                 title = os.path.splitext(rec)[0]
@@ -37,8 +39,9 @@ def get_data_for_hour(audio_dir, keyword):
             else:
                 combined_wav = hstack((combined_wav, wav_data))
             last_recording = rec
-    title += " " + os.path.splitext(last_recording)[0]
+    title += " - " + os.path.splitext(last_recording)[0]
     return combined_wav, title
+
 
 def create_decibel_plot(data, title=None, name=None, save=False, show=True):
     xs, dbs = get_decibels(data)
@@ -54,6 +57,7 @@ def create_decibel_plot(data, title=None, name=None, save=False, show=True):
     if save and name is not None:
         plt.savefig(name)
     plt.close()
+
 
 def get_decibels(data, path=None, name=None, save=False):
     if path is not None and name is not None:
@@ -71,22 +75,12 @@ def get_decibels(data, path=None, name=None, save=False):
             pickle.dump((xs, dbs), outfile)
     return xs, dbs
 
+
 def main():
-    """
     audio_dir = "/Users/lukestack/PycharmProjects/BeeVisualization/15-04-2015Org/audio/"
-    for rec in os.listdir(audio_dir):
-        if ".flac" in rec:
-            wav = audio_dir + rec
-            samprate, wav_data = get_data(wav)
-            xs, dbs = get_decibels(wav_data, path="/Users/lukestack/PycharmProjects/BeeVisualization/15-04-2015Org/Decibels/",
-                         name=os.path.splitext(rec)[0], save=True)
-            print dbs
-    """
-    # wav_data, title = get_data_for_hour(audio_dir, "left")
-    # create_decibel_plot(wav_data, title=title, show=True)
-    flac = "/Users/lukestack/PycharmProjects/BeeVisualization/15-04-2015Org/audio/17:48:01_left.flac"
-    samprate, wav_data = get_data(flac)
-    create_decibel_plot(wav_data, show=True)
+    data, title = get_data_for_hour_range(audio_dir, (15, 15), "left")
+    create_decibel_plot(data, title, "/Users/lukestack/PycharmProjects/BeeVisualization/15-04-2015Org/Decibels/Hour_15.jpeg", True, False)
+
 
 if __name__ == "__main__":
     main()
