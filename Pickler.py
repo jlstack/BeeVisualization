@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import tempfile
 from pydub import AudioSegment
 import pickle
+import numpy as np
 
 
 fs = 1225
@@ -34,8 +35,8 @@ def save_specgram_pkl(data, title=None, name=None, show=False):
         ax.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
         if title is not None:
             ax.set_title(title)
-        # ax.set_ylim(0, 600)
-        # ax.set_yticks(np.arange(0, 601, 50.0))
+        ax.set_ylim(0, 600)
+        ax.set_yticks(np.arange(0, 601, 50.0))
         ax.set_xlabel("Time (sec)")
         ax.set_ylabel("Frequencies (hz)")
         plt.show()
@@ -50,12 +51,11 @@ def main(input_dir, output_dir):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
     for dir in os.listdir(input_dir):
-        print input_dir + dir + "/audio/"
+        print (input_dir + dir)
         if os.path.isdir(input_dir + dir + "/audio/"):
             date = dir.split("-")
             date.reverse()
             date = "-".join(date)
-            print date
             audio_dir = input_dir + dir + "/audio/"
             file_index = 1
             for rec in os.listdir(audio_dir):
@@ -69,10 +69,10 @@ def main(input_dir, output_dir):
                 output = output_dir + date + "_" + os.path.splitext(rec)[0] + ".spec.pkl"
                 save_specgram_pkl(bee_data, os.path.splitext(rec)[0], output, show=False)
 
-                print "file", file_index, "completed"
+                print ("file", file_index, "completed")
                 file_index += 1
 
 
 if __name__ == "__main__":
     import sys
-main("/Users/lukestack/PycharmProjects/BeeVisualization/", "/Users/lukestack/PycharmProjects/BeeVisualization/Pickles/")
+    main(sys.argv[1], sys.argv[2])
