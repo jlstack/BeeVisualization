@@ -18,11 +18,14 @@ noverlap = 512
 
 
 def get_data(path):
+    if path.endswith(".wav"):
+        bee_rate, bee_data = read(path)
+        return bee_rate, bee_data
     temp = tempfile.NamedTemporaryFile(suffix=".wav")
     if path.endswith(".flac"):
         sound = AudioSegment.from_file(path, "flac")
         sound.export(temp.name, format="wav")
-    if path.endswith(".mp3"):
+    elif path.endswith(".mp3"):
         sound = AudioSegment.from_file(path, "mp3")
         sound.export(temp.name, format="wav")
     bee_rate, bee_data = read(temp.name)
@@ -79,10 +82,10 @@ def main(input_dir, output_dir):
             date.reverse()
             date = "-".join(date)
             for rec in os.listdir(audio_dir):
+                print (audio_dir + rec)
                 if rec.endswith(".wav") or rec.endswith(".flac") or rec.endswith(".mp3"):
-                    (bee_rate, bee_data) = read(audio_dir + rec)
+                    (bee_rate, bee_data) = get_data(audio_dir + rec)
                 else:
-                    print ("not an audio file")
                     continue
                 bee_data = decimate(bee_data, 36)
                 if "left" in rec:
@@ -91,8 +94,8 @@ def main(input_dir, output_dir):
                     output = output_dir + "right/" + date + "_" + os.path.splitext(rec)[0] + ".spec.pkl"
                 else:
                     output = output_dir + "single_channel/" + date + "_" + os.path.splitext(rec)[0] + ".spec.pkl"
-                print (output)
-                save_specgram_pkl(bee_data, os.path.splitext(rec)[0], output, show=False)
+                if not os.path.isfile(output):
+                    save_specgram_pkl(bee_data, os.path.splitext(rec)[0], output, show=False)
 
 
 if __name__ == "__main__":
