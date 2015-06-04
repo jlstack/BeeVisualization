@@ -81,7 +81,9 @@ def main(input_dir, output_dir):
             date = dir.split("-")
             date.reverse()
             date = "-".join(date)
-            for rec in os.listdir(audio_dir):
+            recordings = os.listdir(audio_dir)
+            recordings.sort()
+            for rec in recordings:
                 print (audio_dir + rec)
                 if rec.endswith(".wav") or rec.endswith(".flac") or rec.endswith(".mp3"):
                     (bee_rate, bee_data) = get_data(audio_dir + rec)
@@ -100,4 +102,4 @@ def main(input_dir, output_dir):
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1], sys.argv[2])
+    main("/Users/lukestack/PycharmProjects/BeeVisualization", "/Users/lukestack/PycharmProjects/BeeVisualization/Pickles")
