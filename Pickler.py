@@ -3,6 +3,8 @@ __author__ = 'lukestack'
 import os
 from scipy.signal import decimate
 from scipy.io.wavfile import read
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tempfile
 from pydub import AudioSegment
@@ -28,6 +30,12 @@ def get_data(path):
     return bee_rate, bee_data
 
 
+def combine_specgrams(data1, data2):
+    data1 = (data1[::, ::2] + data1[::, 1::2]) / 2.0
+    data2 = (data2[::, ::2] + data2[::, 1::2]) / 2.0
+    return np.hstack((data1, data2))
+
+
 def save_specgram_pkl(data, title=None, name=None, show=False):
     if show:
         fig = plt.figure()
@@ -42,35 +50,49 @@ def save_specgram_pkl(data, title=None, name=None, show=False):
         plt.show()
         plt.close()
     data, freqs, bins, img = plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
-    with open(name, 'w') as outfile:
+    with open(name, 'wb') as outfile:
         pickle.dump((data, freqs), outfile)
     plt.close()
 
 
-def main(input_dir, output_dir):
+def create_directories(output_dir):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
+    if not os.path.isdir(output_dir + "left/"):
+        os.makedirs(output_dir + "left/")
+    if not os.path.isdir(output_dir + "right/"):
+        os.makedirs(output_dir + "right/")
+    if not os.path.isdir(output_dir + "single_channel/"):
+        os.makedirs(output_dir + "single_channel/")
+
+
+def main(input_dir, output_dir):
+    if not input_dir.endswith("/"):
+        input_dir += "/"
+    if not output_dir.endswith("/"):
+        output_dir += "/"
+    create_directories(output_dir)
     for dir in os.listdir(input_dir):
-        print (input_dir + dir)
         if os.path.isdir(input_dir + dir + "/audio/"):
+            audio_dir = input_dir + dir + "/audio/"
             date = dir.split("-")
             date.reverse()
             date = "-".join(date)
-            audio_dir = input_dir + dir + "/audio/"
-            file_index = 1
             for rec in os.listdir(audio_dir):
                 if rec.endswith(".wav") or rec.endswith(".flac") or rec.endswith(".mp3"):
                     (bee_rate, bee_data) = read(audio_dir + rec)
                 else:
-                    print "not an audio file"
+                    print ("not an audio file")
                     continue
-
                 bee_data = decimate(bee_data, 36)
-                output = output_dir + date + "_" + os.path.splitext(rec)[0] + ".spec.pkl"
+                if "left" in rec:
+                    output = output_dir + "left/" + date + "_" + os.path.splitext(rec)[0] + ".spec.pkl"
+                elif "right" in rec:
+                    output = output_dir + "right/" + date + "_" + os.path.splitext(rec)[0] + ".spec.pkl"
+                else:
+                    output = output_dir + "single_channel/" + date + "_" + os.path.splitext(rec)[0] + ".spec.pkl"
+                print (output)
                 save_specgram_pkl(bee_data, os.path.splitext(rec)[0], output, show=False)
-
-                print ("file", file_index, "completed")
-                file_index += 1
 
 
 if __name__ == "__main__":
