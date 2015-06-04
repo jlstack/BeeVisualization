@@ -1,2 +1,6 @@
 This site contains info on how to use ffmpeg through a subprocess in Python:
 http://stackoverflow.com/questions/25955322/subprocess-call-ffmpeg-command-line
+
+http://stackoverflow.com/questions/13243690/decibel-values-at-specific-points-in-wav-file
+
+http://en.wikipedia.org/wiki/Sound_pressure#Sound_pressure_level
