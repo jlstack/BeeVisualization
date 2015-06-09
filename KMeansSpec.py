@@ -94,12 +94,14 @@ def KMeans_dir(path, n=None, limit=None):
             count += 1
             temp.close()
             #Append it to the list of data
-            data.append(pxx.ravel())
+            for index in range(pxx.shape[1]):
+                data.append(pxx[:,index])
             names.append(recording)
             if count % 25 == 0:
                 print str(count) + " out of " + str(limit) + " wav files read!"
         #Close the FTP connection
         session.quit()
+        print len(data)
         #Make sure the number of clusters is set
         if n is None:
             n = 10
@@ -112,12 +114,12 @@ def KMeans_dir(path, n=None, limit=None):
         print estimator.inertia_
         finals = []
         for i in range(len(estimator.labels_)):
-            if i % 25 == 0:
+            if i % 250 == 0:
                 print "Finding distances between files, where i = " + str(i) + "."
             for j in range(i, len(estimator.labels_)):
                 #Store the distance between points in the same cluster
                 if estimator.labels_[i] == estimator.labels_[j] and i != j:
-                    finals.append([d.euclidean(np.array(data[i]), np.array(data[j])), i, j])
+                    finals.append([d.euclidean(data[i], data[j]), i, j])
         finals.sort()
         #Save the labels, names, overall inertia, and the final distances into a file called "clusterdata.npy"
         saveddata = [estimator.labels_, names, estimator.inertia_, finals]
@@ -135,23 +137,13 @@ def KMeans_dir(path, n=None, limit=None):
         print e
 
 '''
-Used to count the number of points in a given cluster.
-Returns the count for a given cluster number.
-'''
-def find(dataset, x):
-    count = 0
-    for i in range(len(dataset[0])):
-        if dataset[0][i] == x:
-            count += 1
-    return count
-
-'''
 Used to return the counts for each cluster.
 Prints this out to the console.
 '''
 def total_counts(dataset, n):
+    labelist = dataset[0].tolist()
     for x in range(n):
-        print "Number of points in cluster " + str(x) + ": " + str(find(dataset, x))
+        print "Number of points in cluster " + str(x) + ": " + str(labelist.count(x))
 
 '''
 Used to run through command prompt instead of python console.
