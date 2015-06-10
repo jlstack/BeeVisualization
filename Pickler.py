@@ -10,6 +10,7 @@ import tempfile
 from pydub import AudioSegment
 import pickle
 import numpy as np
+import Dates
 
 
 fs = 1225
@@ -52,21 +53,12 @@ def save_specgram_pkl(data, title=None, name=None, show=False):
         ax.set_ylabel("Frequencies (hz)")
         plt.show()
         plt.close()
-    data, freqs, bins, img = plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
+    data = decimate(data, 36)
+    spectrum, freqs, time, img = plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
+    spectrum = abs(spectrum).astype(np.float32)
     with open(name, 'wb') as outfile:
-        pickle.dump((data, freqs), outfile)
+        pickle.dump((spectrum, freqs, time), outfile)
     plt.close()
-
-
-def create_directories(output_dir):
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
-    if not os.path.isdir(output_dir + "left/"):
-        os.makedirs(output_dir + "left/")
-    if not os.path.isdir(output_dir + "right/"):
-        os.makedirs(output_dir + "right/")
-    if not os.path.isdir(output_dir + "single_channel/"):
-        os.makedirs(output_dir + "single_channel/")
 
 
 def main(input_dir, output_dir):
@@ -74,32 +66,39 @@ def main(input_dir, output_dir):
         input_dir += "/"
     if not output_dir.endswith("/"):
         output_dir += "/"
-    create_directories(output_dir)
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
     for dir in os.listdir(input_dir):
         if os.path.isdir(input_dir + dir + "/audio/"):
             audio_dir = input_dir + dir + "/audio/"
             date = dir.split("-")
             date.reverse()
             date = "-".join(date)
+            if "Org" in date:
+                index = date.index("Org")
+                date = date[:index] + date[index + 3:]
             recordings = os.listdir(audio_dir)
             recordings.sort()
             for rec in recordings:
                 print (audio_dir + rec)
                 if rec.endswith(".wav") or rec.endswith(".flac") or rec.endswith(".mp3"):
-                    (bee_rate, bee_data) = get_data(audio_dir + rec)
+                    file_time = os.path.splitext(rec)[0][:os.path.splitext(rec)[0].index("_")]
+                    hex_num, hex_dir = Dates.to_hex(date, file_time)
+                    print os.path.splitext(rec)[0][:os.path.splitext(rec)[0].index("_")], hex_num
+                    if not os.path.isdir(output_dir + hex_dir):
+                        os.makedirs(output_dir + hex_dir)
+                    if "left" in rec:
+                        output = output_dir + hex_dir + hex_num + "_" + date + "T" + file_time + "Z_left.spec.pkl"
+                    else:
+                        output = output_dir + hex_dir + hex_num + "_" + date + "T" + file_time + "Z_right.spec.pkl"
+                    if not os.path.isfile(output):
+                        (bee_rate, bee_data) = get_data(audio_dir + rec)
+                        save_specgram_pkl(bee_data, os.path.splitext(rec)[0], output, show=False)
                 else:
                     continue
-                bee_data = decimate(bee_data, 36)
-                if "left" in rec:
-                    output = output_dir + "left/" + date + "_" + os.path.splitext(rec)[0] + ".spec.pkl"
-                elif "right" in rec:
-                    output = output_dir + "right/" + date + "_" + os.path.splitext(rec)[0] + ".spec.pkl"
-                else:
-                    output = output_dir + "single_channel/" + date + "_" + os.path.splitext(rec)[0] + ".spec.pkl"
-                if not os.path.isfile(output):
-                    save_specgram_pkl(bee_data, os.path.splitext(rec)[0], output, show=False)
+
 
 
 if __name__ == "__main__":
     import sys
-    main("/Users/lukestack/PycharmProjects/BeeVisualization", "/Users/lukestack/PycharmProjects/BeeVisualization/Pickles")
+    main(sys.argv[1], sys.argv[2])
