@@ -16,14 +16,14 @@ noverlap = 16384
 def create_spectrum(data, title=None, name=None, save=True, show=False):
     Pxx, freqs, bins, img = plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
     plt.close()
-
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
-    ax.plot(freqs, np.mean(Pxx, axis=1))
+    ax.plot(freqs, np.mean(np.abs(Pxx), axis=1))
     if title is not None:
         ax.set_title(title)
-    ax.set_xlim(0,600)
-    ax.set_ylim(0,35000)
+    ax.set_xlim(0, 600)
+    ax.set_xticks(np.arange(0, 601, 50.0))
+    ax.set_ylim(0, 40000)
     ax.set_xlabel("Frequencies (hz)")
     ax.set_ylabel("Count")
     if show:
@@ -39,6 +39,7 @@ def create_spectrogram(data, title=None, name=None, save=True, show=False):
     if title is not None:
         ax.set_title(title)
     ax.set_ylim(0, 600)
+    ax.set_yticks(np.arange(0, 601, 50.0))
     ax.set_xlabel("Time (sec)")
     ax.set_ylabel("Frequencies (hz)")
     if show:
@@ -47,13 +48,15 @@ def create_spectrogram(data, title=None, name=None, save=True, show=False):
         plt.savefig(name)
     plt.close()
 
-
 def get_data(path):
+    if path.endswith(".wav"):
+        bee_rate, bee_data = read(path)
+        return bee_rate, bee_data
     temp = tempfile.NamedTemporaryFile(suffix=".wav")
     if path.endswith(".flac"):
         sound = AudioSegment.from_file(path, "flac")
         sound.export(temp.name, format="wav")
-    if path.endswith(".mp3"):
+    elif path.endswith(".mp3"):
         sound = AudioSegment.from_file(path, "mp3")
         sound.export(temp.name, format="wav")
     bee_rate, bee_data = read(temp.name)
@@ -116,4 +119,4 @@ def main(input_dir):
 
 if __name__ == "__main__":
     import sys
-main("/Users/lukestack/PycharmProjects/BeeVisualization/15-04-2015Org/")
+    main(sys.argv[1])
