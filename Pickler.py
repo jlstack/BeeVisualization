@@ -73,7 +73,9 @@ def main(input_dir, output_dir):
         output_dir += "/"
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
-    for dir in os.listdir(input_dir):
+    directories = os.listdir(input_dir)
+    directories.sort()
+    for dir in directories:
         if os.path.isdir(input_dir + dir + "/audio/"):
             audio_dir = input_dir + dir + "/audio/"
             date = dir.split("-")
