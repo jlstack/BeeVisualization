@@ -21,16 +21,21 @@ noverlap = 512
 def get_data(path):
     if path.endswith(".wav"):
         bee_rate, bee_data = read(path)
-        return bee_rate, bee_data
-    temp = tempfile.NamedTemporaryFile(suffix=".wav")
-    if path.endswith(".flac"):
-        sound = AudioSegment.from_file(path, "flac")
-        sound.export(temp.name, format="wav")
-    elif path.endswith(".mp3"):
-        sound = AudioSegment.from_file(path, "mp3")
-        sound.export(temp.name, format="wav")
-    bee_rate, bee_data = read(temp.name)
-    temp.close()
+    else:
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        if path.endswith(".flac"):
+            sound = AudioSegment.from_file(path, "flac")
+            sound.export(temp.name, format="wav")
+        elif path.endswith(".mp3"):
+            sound = AudioSegment.from_file(path, "mp3")
+            sound.export(temp.name, format="wav")
+        bee_rate, bee_data = read(temp.name)
+        temp.close()
+    data_type = np.iinfo(bee_data.dtype)
+    dmin = data_type.min
+    dmax = data_type.max
+    bee_data = bee_data.astype(np.float32)
+    bee_data = 2 * ((bee_data - dmin) / (dmax - dmin)) - 1
     return bee_rate, bee_data
 
 
@@ -55,7 +60,7 @@ def save_specgram_pkl(data, title=None, name=None, show=False):
         plt.close()
     data = decimate(data, 36)
     spectrum, freqs, time, img = plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
-    spectrum = abs(spectrum).astype(np.float32)
+    spectrum = abs(spectrum)
     with open(name, 'wb') as outfile:
         pickle.dump((spectrum, freqs, time), outfile)
     plt.close()
@@ -80,11 +85,11 @@ def main(input_dir, output_dir):
             recordings = os.listdir(audio_dir)
             recordings.sort()
             for rec in recordings:
-                print (audio_dir + rec)
                 if rec.endswith(".wav") or rec.endswith(".flac") or rec.endswith(".mp3"):
+                    print (audio_dir + rec)
                     file_time = os.path.splitext(rec)[0][:os.path.splitext(rec)[0].index("_")]
+                    date, file_time = Dates.convert_to_utc(date, file_time)
                     hex_num, hex_dir = Dates.to_hex(date, file_time)
-                    print os.path.splitext(rec)[0][:os.path.splitext(rec)[0].index("_")], hex_num
                     if not os.path.isdir(output_dir + hex_dir):
                         os.makedirs(output_dir + hex_dir)
                     if "left" in rec:
@@ -96,7 +101,6 @@ def main(input_dir, output_dir):
                         save_specgram_pkl(bee_data, os.path.splitext(rec)[0], output, show=False)
                 else:
                     continue
-
 
 
 if __name__ == "__main__":
