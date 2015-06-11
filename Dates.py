@@ -18,7 +18,7 @@ def to_hex(date, file_time):
                   hour=int(file_time[0]), minute=int(file_time[1]), second=int(file_time[2]), tzinfo=utc)
     d1_ts = time.mktime(START_DATE.timetuple())
     d2_ts = time.mktime(d2.timetuple())
-    minutes = int(d2_ts-d1_ts) / 60
+    minutes = int((d2_ts-d1_ts) / 60)
     return '{:07x}'.format(minutes), '/'.join('{:07x}'.format(minutes)[:-1]) + "/"
 
 
