@@ -37,26 +37,24 @@ def visualizer(path1):
             results.append(np.load(os.getcwd() + "/SpecgramData/Right/" + finalList[i]))
     pca = PCA(n_components = 2)
     pxx = np.asarray(pxx)
-    print len(results)
-    results = np.asarray(results)
     newRes = []
-    for k in range(len(results[0][0])):
-        for i in range(len(results)):
-            newRes.append(results[i,:,k])
+    for i in range(len(results)):
+        for k in range(len(results[i][0])):
+            newRes.append(results[i][:,k])
     for i in pxx:
         newRes.append(i)
     newRes = np.asarray(newRes)
-    print newRes.shape
+    print "Shape: " + str(newRes.shape)
     print "Reducing dimensionality of the data..."
     reducedRes = pca.fit_transform(newRes)
     path1 = path1.split('.')[0]
     print "Plotting data..."
     #fig = plt.figure()
     #ax = fig.add_subplot(111, projection = '3d')
-    plt.scatter(reducedRes[:len(reducedRes)-num1,0], reducedRes[:len(reducedRes)-20,1], c='b')
+    plt.scatter(reducedRes[:len(reducedRes)-num1,0], reducedRes[:len(reducedRes)-num1,1], c='b')
     plt.scatter(reducedRes[-num1:, 0], reducedRes[-num1:, 1], c='r')
-    #ax.scatter(reducedRes[:len(reducedRes)-20,0], reducedRes[:len(reducedRes)-20,1], reducedRes[:len(reducedRes)-20,2], c = 'b')
-    #ax.scatter(reducedRes[-20:,0], reducedRes[-20:,1], reducedRes[-20:,2], c = 'r')
+    #ax.scatter(reducedRes[:len(reducedRes)-num1,0], reducedRes[:len(reducedRes)-num1,1], reducedRes[:len(reducedRes)-num1,2], c = 'b')
+    #ax.scatter(reducedRes[-num1:,0], reducedRes[-num1:,1], reducedRes[-num1:,2], c = 'r')
     plt.title("Image of " + path1)
     #Show and save the periodograms
     plt.show()
