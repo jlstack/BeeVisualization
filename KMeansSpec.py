@@ -59,7 +59,7 @@ def KMeans_dir(path, n=None, limit=None):
         if limit is None:
             limit = 0
             for rec in audiofiles:
-                if os.path.splitext(recording)[1] == ".wav":
+                if os.path.splitext(rec)[1] == ".wav":
                     limit += 1
         limit = int(limit)
         #Get the recordings and parse them for clustering
