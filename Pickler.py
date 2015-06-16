@@ -4,7 +4,7 @@ import os
 from scipy.signal import resample
 from scipy.io.wavfile import read
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tempfile
 from pydub import AudioSegment
@@ -61,12 +61,9 @@ def save_specgram_pkl(data, date, file_time, recording, output_dir, show=False):
     if show:
         show_spectrogram(data, date, file_time)
     specgram, freqs, time, img = plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
-
-    hex_num, hex_dir = Dates.to_hex(date, file_time)
-
     specgram = abs(specgram)
+    hex_num, hex_dir = Dates.to_hex(date, file_time)
     print (date, file_time, hex_num)
-    print specgram.shape
     for i in range(-1, specgram.shape[1] + 1):
         temp_date, temp_time = Dates.add_seconds_to_date(date, file_time, i)
         hex_num, hex_dir = Dates.to_hex(temp_date, temp_time)
@@ -119,4 +116,4 @@ def main(input_dir, output_dir):
 
 if __name__ == "__main__":
     import sys
-    main("/Users/lukestack/PycharmProjects/BeeVisualization", "/Users/lukestack/PycharmProjects/BeeVisualization/Pickles")
+    main(sys.argv[1],sys.argv[2])
