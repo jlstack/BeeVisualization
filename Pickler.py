@@ -109,8 +109,8 @@ def main(input_dir, output_dir):
                 if rec.endswith(".wav") or rec.endswith(".flac") or rec.endswith(".mp3"):
                     print (audio_dir + rec)
                     file_time = os.path.splitext(rec)[0][:os.path.splitext(rec)[0].index("_")]
-                    date, file_time = Dates.convert_to_utc(date, file_time)
-                    temp_date, temp_time = Dates.add_seconds_to_date(date, file_time, 30)
+                    converted_date, converted_file_time = Dates.convert_to_utc(date, file_time)
+                    temp_date, temp_time = Dates.add_seconds_to_date(converted_date, converted_file_time, 30)
                     hex_num, hex_dir = Dates.to_hex(temp_date, temp_time)
                     if "left" in rec:
                         output = output_dir + hex_dir + hex_num + "_" + temp_date + "T" + temp_time + "Z_left.spec.pkl"
@@ -118,7 +118,7 @@ def main(input_dir, output_dir):
                         output = output_dir + hex_dir + hex_num + "_" + temp_date + "T" + temp_time + "Z_right.spec.pkl"
                     if not os.path.isfile(output):
                         (bee_rate, bee_data) = get_data(audio_dir + rec)
-                        save_specgram_pkl(bee_data, date, file_time, rec, output_dir)
+                        save_specgram_pkl(bee_data, converted_date, converted_file_time, rec, output_dir)
 
 
 if __name__ == "__main__":
