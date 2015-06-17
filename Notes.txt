@@ -6,3 +6,6 @@ http://stackoverflow.com/questions/13243690/decibel-values-at-specific-points-in
 http://en.wikipedia.org/wiki/Sound_pressure#Sound_pressure_level
 
 http://stackoverflow.com/questions/2788871/python-date-difference-in-minutes
+
+Saving interactive plot for pyplot:
+http://stackoverflow.com/questions/7290370/store-and-reload-matplotlib-pyplot-object
