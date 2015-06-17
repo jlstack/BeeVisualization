@@ -1,79 +1,115 @@
-__author__ = 'lukestack'
-
+import re
 import os
 import pickle
 import numpy as np
-import math
-
-def combine_specgrams(data1, data2):
-    data1 = (data1[::, ::2] + data1[::, 1::2]) / 2.0
-    data2 = (data2[::, ::2] + data2[::, 1::2]) / 2.0
-    return np.hstack((data1, data2))
 
 
-def save_pickle(spectrum, freqs, file_name):
+def save_pickle(data, file_name):
     if not os.path.isfile(file_name):
         with open(file_name, 'wb') as outfile:
-            pickle.dump((spectrum, freqs), outfile)
+            pickle.dump(data, outfile)
 
 
-def create_combined_pickles(input_dir):
-    spectrum = os.listdir(input_dir)
-    spectrum.sort()
-    combined_specgram_left = None
-    combined_specgram_right = None
-    hex_values = []
-    freqs = None
-    for spec in spectrum: 
-        if ".spec.pkl" in spec:
-            hex_values.append(spec[:8])
-            with open(input_dir + spec, 'rb') as f:
-                spectrum, freq, time = pickle.load(f)
-            if freqs is None:
-                freqs = freq
-            if "left" in spec:
-                if combined_specgram_left is None:
-                    combined_specgram_left = spectrum
-                else:
-                    combined_specgram_left = np.vstack((combined_specgram_left, spectrum))
-            else:    
-                if combined_specgram_right is None:
-                    combined_specgram_right = spectrum
-                else:
-                    combined_specgram_right = np.vstack((combined_specgram_right, spectrum)) 
-    log = (math.ceil(math.log10(int(hex_values[len(hex_values) - 1], 16) - int(hex_values[0], 16)) / math.log10(16)))
-    if log == 0:
-        hex_num = (hex_values[0][:8 - 1])
-    else:
-        hex_num = (hex_values[0][:8 - log])
-    print (combined_specgram_left.shape) 
-    if combined_specgram_left.shape[0] == 16:
-        save_pickle(np.mean(combined_specgram_left[:2], axis=0), freqs, input_dir + hex_num + "_000_left.spec.pkl")
-        save_pickle(np.mean(combined_specgram_left[2:4], axis=0), freqs, input_dir + hex_num + "_001_left.spec.pkl")
-        save_pickle(np.mean(combined_specgram_left[:4], axis=0), freqs, input_dir + hex_num + "_00_left.spec.pkl")
-        save_pickle(np.mean(combined_specgram_left[4:8], axis=0), freqs, input_dir + hex_num + "_01_left.spec.pkl")
-        save_pickle(np.mean(combined_specgram_left[0:8], axis=0), freqs, input_dir + hex_num + "_0_left.spec.pkl")
-        save_pickle(np.mean(combined_specgram_left[8:16], axis=0), freqs, input_dir + hex_num + "_1_left.spec.pkl")
-        save_pickle(np.mean(combined_specgram_left, axis=0), freqs, input_dir + hex_num + "_left.spec.pkl")
-    else:
-        print (hex_num + "is not a full directory")
-    
-    if combined_specgram_right.shape[0] == 16:
-        save_pickle(np.mean(combined_specgram_right[:2], axis=0), freqs, input_dir + hex_num + "_000_right.spec.pkl")
-        save_pickle(np.mean(combined_specgram_right[2:4], axis=0), freqs, input_dir + hex_num + "_001_right.spec.pkl")
-        save_pickle(np.mean(combined_specgram_right[:4], axis=0), freqs, input_dir + hex_num + "_00_right.spec.pkl")
-        save_pickle(np.mean(combined_specgram_right[4:8], axis=0), freqs, input_dir + hex_num + "_01_right.spec.pkl")
-        save_pickle(np.mean(combined_specgram_right[0:8], axis=0), freqs, input_dir + hex_num + "_0_right.spec.pkl")
-        save_pickle(np.mean(combined_specgram_right[8:16], axis=0), freqs, input_dir + hex_num + "_1_right.spec.pkl")
-        save_pickle(np.mean(combined_specgram_right, axis=0), freqs, input_dir + hex_num + "_right.spec.pkl")
-    else:
-        print (hex_num + "is not a full directory")
-        
+def other_levels(input_dir, binary_digits):
+    pickles = os.listdir(input_dir)
+    pickles.sort()
+    spectrum = {"left": {}, "right": {}}
+    for pic in pickles:
+        m = re.search(r"[0-9a-fA-F]{7}_[0-1]{" + str(binary_digits) + "}", pic)
+        if m:
+            hex_num = re.search(r"[0-9a-fA-F]{7}", pic).group()
+            binary_num = re.search(r"[0-1]{" + str(binary_digits) + "}", pic).group()
+            if "left" in pic:
+                if binary_num not in spectrum["left"].keys():
+                    with open(input_dir + pic, 'rb') as f:
+                        spec, freq, time = pickle.load(f)
+                    spectrum["left"][binary_num] = (spec, freq, time)
+            else:
+                if binary_num not in spectrum["right"].keys():
+                    with open(input_dir + pic, 'rb') as f:
+                        spec, freq, time = pickle.load(f)
+                    spectrum["right"][binary_num] = (spec, freq, time)
+    save_combined_pickles_other_levels(spectrum, hex_num, input_dir)
+
+
+def save_combined_pickles_other_levels(spectrum, hex_num, output_dir):
+    binary_len = len(spectrum[spectrum.keys()[0]].keys()[0])
+    for key in spectrum.keys():
+        for i in range(0, 2**binary_len, 2):
+            binary_form = "{:0" + str(binary_len) + "b}"
+            if binary_len == 1:
+                file_name = output_dir + "../" + hex_num + "_" + key + ".spec.pkl"
+            else:
+                file_name = output_dir + hex_num + "_" + binary_form.format(i)[:binary_len - 1] + "_" + key + ".spec.pkl"
+            try:
+                s1, s1_freqs, s1_time = spectrum[key][binary_form.format(i)]
+            except KeyError:
+                s1 = s1_freqs = s1_time = None
+            try:
+                s2, s2_freqs, s2_time = spectrum[key][binary_form.format(i + 1)]
+            except KeyError:
+                s2 = s2_freqs = s2_time = None
+            if s1 is None and s2 is None:
+                continue
+            elif s1 is None:
+                save_pickle((s2, s2_freqs, None), file_name)
+            elif s2 is None:
+                save_pickle((s1, s1_freqs, None), file_name)
+            else:
+                save_pickle(((s1 + s2) / 2, s1_freqs, None), file_name)
+
+
+def lowest_level(input_dir):
+    pickles = os.listdir(input_dir)
+    pickles.sort()
+    spectrum = {"left": {}, "right": {}}
+    for pic in pickles:
+        m = re.search(r"[0-9a-fA-F]{8}_[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", pic)
+        if m:
+            hex_num = re.search(r"[0-9a-fA-F]{8}", pic).group()
+            if "left" in pic:
+                if hex_num not in spectrum["left"].keys():
+                    with open(input_dir + pic, 'rb') as f:
+                        spec, freq, time = pickle.load(f)
+                    spectrum["left"][hex_num] = (spec, freq, None)
+            else:
+                if hex_num not in spectrum["right"].keys():
+                    with open(input_dir + pic, 'rb') as f:
+                        spec, freq, time = pickle.load(f)
+                    spectrum["right"][hex_num] = (spec, freq, None)
+    save_combined_pickles_lowest_level(spectrum, input_dir)
+
+
+def save_combined_pickles_lowest_level(spectrum, output_dir):
+    hex_num = spectrum[spectrum.keys()[0]].keys()[0][:-1]
+    for key in spectrum.keys():
+        for i in range(0, 16, 2):
+            file_name = output_dir + hex_num + "_" + "{0:04b}".format(i)[:3] + "_" + key + ".spec.pkl"
+            try:
+                s1, s1_freqs, s1_time = spectrum[key][hex_num + '{:01x}'.format(i)]
+            except KeyError:
+                s1 = s1_freqs = s1_time = None
+            try:
+                s2, s2_freqs, s2_time = spectrum[key][hex_num + '{:01x}'.format(i + 1)]
+            except KeyError:
+                s2 = s2_freqs = s2_time = None
+
+            if s1 is None and s2 is None:
+                continue
+            elif s1 is None:
+                save_pickle((s2, s2_freqs, None), file_name)
+            elif s2 is None:
+                save_pickle((s1, s1_freqs, None), file_name)
+            else:
+                save_pickle(((s1 + s2) / 2, s1_freqs, None), file_name)
+
 
 def main(input_dir):
     if not input_dir.endswith("/"):
         input_dir += "/"
-    create_combined_pickles(input_dir)
+    lowest_level(input_dir)
+    for i in range(3, 0, -1):
+        other_levels(input_dir, i)
 
 
 if __name__ == "__main__":
