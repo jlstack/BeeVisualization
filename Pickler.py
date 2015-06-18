@@ -81,7 +81,7 @@ def save_specgram_pkl(data, date, file_time, recording, output_dir, show=False):
             spectrum = specgram[:, i]
         if not os.path.isfile(output):
             with open(output, 'wb') as outfile:
-                pickle.dump((spectrum, freqs, time), outfile)
+                pickle.dump((spectrum.astype(np.float32), freqs.astype(np.float32), time.astype(np.float32)), outfile)
             plt.close()
 
 
@@ -123,4 +123,4 @@ def main(input_dir, output_dir):
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.arv[2])
