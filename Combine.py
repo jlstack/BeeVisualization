@@ -10,14 +10,15 @@ def save_pickle(data, file_name):
             pickle.dump(data, outfile)
 
 
-def other_levels(input_dir, binary_digits):
+def other_levels(input_dir, hex_digits, binary_digits):
     pickles = os.listdir(input_dir)
     pickles.sort()
     spectrum = {"left": {}, "right": {}}
+    hex_num = None
     for pic in pickles:
-        m = re.search(r"[0-9a-fA-F]{7}_[0-1]{" + str(binary_digits) + "}", pic)
+        m = re.search(r"[0-9a-fA-F]{" + str(hex_digits) + "}_[0-1]{" + str(binary_digits) + "}", pic)
         if m:
-            hex_num = re.search(r"[0-9a-fA-F]{7}", pic).group()
+            hex_num = re.search(r"[0-9a-fA-F]{" + str(hex_digits) + "}", pic).group()
             binary_num = re.search(r"[0-1]{" + str(binary_digits) + "}", pic).group()
             if "left" in pic:
                 if binary_num not in spectrum["left"].keys():
@@ -29,11 +30,17 @@ def other_levels(input_dir, binary_digits):
                     with open(input_dir + pic, 'rb') as f:
                         spec, freq, time = pickle.load(f)
                     spectrum["right"][binary_num] = (spec, freq, time)
-    save_combined_pickles_other_levels(spectrum, hex_num, input_dir)
+    if hex_num is not None:
+        save_combined_pickles_other_levels(spectrum, hex_num, input_dir)
 
 
 def save_combined_pickles_other_levels(spectrum, hex_num, output_dir):
-    binary_len = len(spectrum[spectrum.keys()[0]].keys()[0])
+    if len(spectrum[spectrum.keys()[0]].keys()) > 0:
+        binary_len = len(spectrum[spectrum.keys()[0]].keys()[0])
+    elif len(spectrum[spectrum.keys()[1]].keys()) > 0:
+        binary_len = len(spectrum[spectrum.keys()[1]].keys()[0])
+    else:
+        return
     for key in spectrum.keys():
         for i in range(0, 2**binary_len, 2):
             binary_form = "{:0" + str(binary_len) + "b}"
@@ -59,29 +66,41 @@ def save_combined_pickles_other_levels(spectrum, hex_num, output_dir):
                 save_pickle(((s1 + s2) / 2, s1_freqs, None), file_name)
 
 
-def lowest_level(input_dir):
+def lowest_level(input_dir, hex_digits):
     pickles = os.listdir(input_dir)
     pickles.sort()
     spectrum = {"left": {}, "right": {}}
     for pic in pickles:
-        m = re.search(r"[0-9a-fA-F]{8}_[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", pic)
+        spec = freq = None
+        m = re.search(r"[0-9a-fA-F]{" + str(hex_digits) + "}", pic)
         if m:
-            hex_num = re.search(r"[0-9a-fA-F]{8}", pic).group()
+            hex_num = re.search(r"[0-9a-fA-F]{" + str(hex_digits) + "}", pic).group()
             if "left" in pic:
                 if hex_num not in spectrum["left"].keys():
-                    with open(input_dir + pic, 'rb') as f:
-                        spec, freq, time = pickle.load(f)
-                    spectrum["left"][hex_num] = (spec, freq, None)
+                    try:
+                        with open(input_dir + pic, 'rb') as f:
+                            spec, freq, time = pickle.load(f)
+                        spectrum["left"][hex_num] = (spec, freq, None)
+                    except EOFError:
+                        spectrum["left"][hex_num] = (spec, freq, None)
             else:
                 if hex_num not in spectrum["right"].keys():
-                    with open(input_dir + pic, 'rb') as f:
-                        spec, freq, time = pickle.load(f)
-                    spectrum["right"][hex_num] = (spec, freq, None)
+                    try:
+                        with open(input_dir + pic, 'rb') as f:
+                            spec, freq, time = pickle.load(f)
+                        spectrum["right"][hex_num] = (spec, freq, None)
+                    except EOFError:
+                        spectrum["left"][hex_num] = (spec, freq, None)
     save_combined_pickles_lowest_level(spectrum, input_dir)
 
 
 def save_combined_pickles_lowest_level(spectrum, output_dir):
-    hex_num = spectrum[spectrum.keys()[0]].keys()[0][:-1]
+    if len(spectrum[spectrum.keys()[0]].keys()) > 0:
+        hex_num = spectrum[spectrum.keys()[0]].keys()[0][:-1]
+    elif len(spectrum[spectrum.keys()[1]].keys()) > 0:
+        hex_num = spectrum[spectrum.keys()[1]].keys()[0][:-1]
+    else:
+        return
     for key in spectrum.keys():
         for i in range(0, 16, 2):
             file_name = output_dir + hex_num + "_" + "{0:04b}".format(i)[:3] + "_" + key + ".spec.pkl"
@@ -93,7 +112,6 @@ def save_combined_pickles_lowest_level(spectrum, output_dir):
                 s2, s2_freqs, s2_time = spectrum[key][hex_num + '{:01x}'.format(i + 1)]
             except KeyError:
                 s2 = s2_freqs = s2_time = None
-
             if s1 is None and s2 is None:
                 continue
             elif s1 is None:
@@ -107,11 +125,33 @@ def save_combined_pickles_lowest_level(spectrum, output_dir):
 def main(input_dir):
     if not input_dir.endswith("/"):
         input_dir += "/"
-    lowest_level(input_dir)
-    for i in range(3, 0, -1):
-        other_levels(input_dir, i)
+
+    # may need to find a better way to find the beginning of the recordings
+    i = 0
+    while i < 16**7:
+        if os.path.isdir(input_dir + '/'.join('{:07x}'.format(i)) + "/"):
+            while os.path.isdir(input_dir + '/'.join('{:07x}'.format(i)) + "/"):
+                i -= 1
+            i += 1
+            break
+        i += 60
+
+    hex_num = '{:07x}'.format(i)
+    for hd in range(7, 0, -1):
+        i = int(hex_num[:hd], 16)
+        last_dir = i
+        hex_form = "{:0" + str(hd) + "x}"
+        extra_steps = 16**(int(hd / 2))
+        while i <= last_dir + extra_steps:  # 1 month after last found directory
+            if os.path.isdir(input_dir + '/'.join(hex_form.format(i)[:hd]) + "/"):
+                print (input_dir + '/'.join(hex_form.format(i)[:hd + 1]) + "/")
+                lowest_level(input_dir + '/'.join(hex_form.format(i)[:hd]) + "/", hd + 1)
+                for bd in range(3, 0, -1):
+                    other_levels(input_dir+ '/'.join(hex_form.format(i)[:hd]) + "/", hd, bd)
+                last_dir = i
+            i += 1
 
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1])
+    main(sys.argv[0])
