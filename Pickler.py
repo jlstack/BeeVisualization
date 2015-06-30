@@ -123,4 +123,4 @@ def main(input_dir, output_dir):
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1], sys.arv[2])
+    main(sys.argv[1], sys.argv[2])
