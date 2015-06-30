@@ -18,11 +18,12 @@ class BeeApp(tk.Tk):
         self.current_input = input_dir + start
         self.img_dir = img_dir
         self.leftmost = self.make_hex8("".join(start.split("/")))
+        self.center = format(int(self.leftmost, 16) + 8, 'x')
         self.zoom = 1
         self.cax = None
         self.panel1 = None
 
-        self.img1 = Image.open(self.get_next_16(self.leftmost))
+        self.img1 = Image.open(self.get_next_16(self.center))
         self.img1.thumbnail((800, 800), Image.ANTIALIAS)
         self.pic1 = ImageTk.PhotoImage(self.img1)
         self.panel1 = tk.Label(self, image=self.pic1)
@@ -43,12 +44,12 @@ class BeeApp(tk.Tk):
     def on_zoom_out(self):
         if self.zoom < 28:
             self.zoom += 1
-            self.update_image(self.get_next_16(self.leftmost))
+            self.update_image(self.get_next_16(self.center))
 
     def on_zoom_in(self):
         if self.zoom != 1:
             self.zoom -= 1
-            self.update_image(self.get_next_16(self.leftmost))
+            self.update_image(self.get_next_16(self.center))
 
     def update_image(self, image):
         if image is not None:
@@ -60,19 +61,22 @@ class BeeApp(tk.Tk):
         return False
 
     def on_right(self):
-        self.get_next_16(self.leftmost, 'right')
+        cen = int(self.center, 16)
+        cen += 2**(3 + self.zoom) / 2
+        self.center = format(cen, 'x')
+        self.get_next_16(self.center, 'right')
 
     def on_left(self):
-        self.get_next_16(self.leftmost, 'left')
+        cen = int(self.center, 16)
+        cen -= 2**(3 + self.zoom) / 2
+        self.center = format(cen, 'x')
+        self.get_next_16(self.center, 'left')
 
     def get_next_16(self, hex_num, direction=None):
-        print "\nZoom: ", self.zoom, "  ", 4 - (self.zoom - 1) % 4
+        print "\nZoom: ", self.zoom
         combined_spec = None
         num = int(hex_num, 16)
-        if direction == 'right':
-            num += 2**(3 + self.zoom) / 2
-        elif direction == 'left':
-            num -= 2**(3 + self.zoom) / 2
+        num -= 2**(3 + self.zoom) / 2
         for i in range(0, 2**(3 + self.zoom), 2**(self.zoom - 1)):
             i_hex = format(num + i, 'x')
             i_hex = i_hex[:len(i_hex) - ((self.zoom - 1) / 4)]
