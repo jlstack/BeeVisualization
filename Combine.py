@@ -1,7 +1,8 @@
 import re
 import os
 import pickle
-import numpy as np
+from datetime import datetime
+import Dates
 
 
 def save_pickle(data, file_name):
@@ -35,10 +36,10 @@ def other_levels(input_dir, hex_digits, binary_digits):
 
 
 def save_combined_pickles_other_levels(spectrum, hex_num, output_dir):
-    if len(spectrum[spectrum.keys()[0]].keys()) > 0:
-        binary_len = len(spectrum[spectrum.keys()[0]].keys()[0])
-    elif len(spectrum[spectrum.keys()[1]].keys()) > 0:
-        binary_len = len(spectrum[spectrum.keys()[1]].keys()[0])
+    if len(spectrum[list(spectrum)[0]].keys()) > 0:
+        binary_len = len(list(spectrum[list(spectrum)[0]])[0])
+    elif len(spectrum[list(spectrum)[1]].keys()) > 0:
+        binary_len = len(list(spectrum[list(spectrum)[1]])[0])
     else:
         return
     for key in spectrum.keys():
@@ -95,10 +96,10 @@ def lowest_level(input_dir, hex_digits):
 
 
 def save_combined_pickles_lowest_level(spectrum, output_dir):
-    if len(spectrum[spectrum.keys()[0]].keys()) > 0:
-        hex_num = spectrum[spectrum.keys()[0]].keys()[0][:-1]
-    elif len(spectrum[spectrum.keys()[1]].keys()) > 0:
-        hex_num = spectrum[spectrum.keys()[1]].keys()[0][:-1]
+    if len(spectrum[list(spectrum)[0]].keys()) > 0:
+        hex_num = list(spectrum[list(spectrum)[0]])[0][:-1]
+    elif len(spectrum[list(spectrum)[1]].keys()) > 0:
+        hex_num = list(spectrum[list(spectrum)[1]])[0][:-1]
     else:
         return
     for key in spectrum.keys():
@@ -126,32 +127,38 @@ def main(input_dir):
     if not input_dir.endswith("/"):
         input_dir += "/"
 
-    # may need to find a better way to find the beginning of the recordings
-    i = 0
+    m_date, m_time = Dates.convert_to_utc("2015-03-01", "00:00:00")  # started recording in march 2015
+    m_hex, m_dir = Dates.to_hex(m_date, m_time)
+    i = int(m_hex[:-1], 16)
     while i < 16**7:
         if os.path.isdir(input_dir + '/'.join('{:07x}'.format(i)) + "/"):
             while os.path.isdir(input_dir + '/'.join('{:07x}'.format(i)) + "/"):
                 i -= 1
             i += 1
             break
-        i += 60
+        i += 1
 
+    now = datetime.now()
+    curr_time = str(now.time())
+    curr_time = curr_time[:curr_time.rfind('.')]
+    curr_date = str(now.date())
+    curr_date, curr_time = Dates.convert_to_utc(curr_date, curr_time)
+    stop_date, stop_time = Dates.add_seconds_to_date(curr_date, curr_time, 24 * 60 * 60)  # adds one extra day
+    stop_hex, stop_dir = Dates.to_hex(stop_date, stop_time)
     hex_num = '{:07x}'.format(i)
     for hd in range(7, 0, -1):
         i = int(hex_num[:hd], 16)
-        last_dir = i
+        stop = int(stop_hex[:hd], 16)
         hex_form = "{:0" + str(hd) + "x}"
-        extra_steps = 16**(int(hd / 2))
-        while i <= last_dir + extra_steps:  # 1 month after last found directory
+        while i <= stop:
             if os.path.isdir(input_dir + '/'.join(hex_form.format(i)[:hd]) + "/"):
                 print (input_dir + '/'.join(hex_form.format(i)[:hd + 1]) + "/")
                 lowest_level(input_dir + '/'.join(hex_form.format(i)[:hd]) + "/", hd + 1)
                 for bd in range(3, 0, -1):
                     other_levels(input_dir+ '/'.join(hex_form.format(i)[:hd]) + "/", hd, bd)
-                last_dir = i
             i += 1
 
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[0])
+    main(sys.argv[1])
