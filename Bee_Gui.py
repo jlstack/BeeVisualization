@@ -6,10 +6,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import Dates
+import ftplib
+from StringIO import StringIO
 
-input_dir = "/Users/lukestack/PycharmProjects/BeeVisualization/Pickles/"
-start = "5/5/2/e/c/3/6/"
-img_dir = "/Users/lukestack/PycharmProjects/BeeVisualization/Images/"
+user = ''
+password = ''
+ftp = ftplib.FTP('cs.appstate.edu', user, password)
+input_dir = "/usr/local/bee/beemon/beeW/Luke/specgrams2/pit2/"
+start = "5/5/9/3/d/1/1/"
+ftp.cwd(input_dir + start)
+img_dir = './Images/'
+if not os.path.exists(img_dir):
+    os.makedirs(img_dir)
 
 class BeeApp(tk.Tk):
     def __init__(self):
@@ -73,17 +81,19 @@ class BeeApp(tk.Tk):
         self.get_next_16(self.center, 'left')
 
     def get_next_16(self, hex_num, direction=None):
-        print "\nZoom: ", self.zoom
+        print ("Zoom: ", self.zoom)
         combined_spec = None
         num = int(hex_num, 16)
         num -= 2**(3 + self.zoom) / 2
         for i in range(0, 2**(3 + self.zoom), 2**(self.zoom - 1)):
-            i_hex = format(num + i, 'x')
-            i_hex = i_hex[:len(i_hex) - ((self.zoom - 1) / 4)]
+            i_hex = '{:08x}'.format(int(num + i))
+            i_hex = i_hex[:int(len(i_hex) - ((self.zoom - 1) / 4))]
             i_dir = "/".join(i_hex[:-1]) + "/"
             i_file = None
-            if os.path.isdir(self.input_dir + i_dir):
-                for f in os.listdir(self.input_dir + i_dir):
+            try:
+                ftp.cwd(input_dir + i_dir)
+                files = ftp.nlst()
+                for f in files:
                     if "left" in f:
                         if 4 - (self.zoom - 1) % 4 == 4:
                             if i_hex in f:
@@ -94,10 +104,14 @@ class BeeApp(tk.Tk):
                             if i_hex[:-1] + "_" + bi + "_" in f:
                                 i_file = f
                                 break
+            except ftplib.error_perm:
+                pass
             if i_file is not None:
-                print i_file
-                with open(self.input_dir + i_dir + i_file) as f:
-                    data = pickle.load(f)
+                print (i_file)
+                r = StringIO()
+                ftp.retrbinary('RETR ' + self.input_dir + i_dir + i_file, r.write)
+                data = pickle.loads(r.getvalue())
+                r.close()
                 if combined_spec is None:
                     combined_spec = data[0]
                 else:
@@ -107,10 +121,9 @@ class BeeApp(tk.Tk):
                     combined_spec = [0] * 2049
                 else:
                     combined_spec = np.vstack((combined_spec, [0] * 2049))
-        hex_time1 = format(num, 'x')
-        hex_time2 = format(num + 2**(3 + self.zoom) - 1, 'x')
-        file_name = self.img_dir + hex_time1 + "_" + \
-                hex_time2 + "_zoom_" + str(self.zoom) + ".png"
+        hex_time1 = '{:08x}'.format(int(num))
+        hex_time2 = '{:08x}'.format(int(num + 2**(3 + self.zoom) - 1))
+        file_name = self.img_dir + hex_time1 + "_" + hex_time2 + "_zoom_" + str(self.zoom) + ".png"
         self.leftmost = self.make_hex8(hex_time1)
         self.create_fig(combined_spec, hex_time1, hex_time2, file_name)
         if self.panel1 is not None:
@@ -130,15 +143,17 @@ class BeeApp(tk.Tk):
         fig.canvas.draw()
         ax.set_xticks(np.arange(0, combined_spec.shape[0], 1.0))
         if self.cax is None:
-            self.cax = ax.imshow(np.log(combined_spec.T), origin='lower', aspect='auto')
-        ax.imshow(np.log(combined_spec.T), origin='lower', aspect='auto')
+            self.cax = ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
+        cax = ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
         ax.set_ylim((0, 1024))
         ax.set_title(title)
         labels = [item.get_text() for item in ax.get_xticklabels()]
         labels[0] = file_time1
+        labels[8] = Dates.to_date(self.center)[1]
         labels[len(labels) - 1] = file_time2
         ax.set_xticklabels(labels)
-        fig.colorbar(self.cax)
+        cax.set_clim(self.cax.get_clim())
+        fig.colorbar(cax)
         plt.savefig(file_name)
         plt.close()
 
@@ -154,6 +169,7 @@ def on_closing():
         file_path = os.path.join(img_dir, the_file)
         if os.path.isfile(file_path):
             os.remove(file_path)
+    os.rmdir(img_dir)
 
 app = BeeApp()
 app.protocol("WM_DELETE_WINDOW", on_closing)
