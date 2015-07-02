@@ -99,7 +99,7 @@ def lowest_level(input_dir, hex_digits):
                         with open(input_dir + pic, 'rb') as f: 
                             u = pickle._Unpickler(f)
                             u.encoding = 'latin1'
-                            data = u.load()
+                            spec, freq, time = u.load()
                             # data = pickle.load(f)
                         spectrum["right"][hex_num] = (spec, freq, None)
                     except EOFError:
