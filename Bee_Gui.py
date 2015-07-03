@@ -9,7 +9,7 @@ import Dates
 import ftplib
 from StringIO import StringIO
 
-user = ''
+user = 'stackjl'
 password = ''
 ftp = ftplib.FTP('cs.appstate.edu', user, password)
 input_dir = "/usr/local/bee/beemon/beeW/Luke/specgrams2/pit2/"
@@ -164,6 +164,7 @@ class BeeApp(tk.Tk):
 
 
 def on_closing():
+    ftp.close()
     app.destroy()
     for the_file in os.listdir(img_dir):
         file_path = os.path.join(img_dir, the_file)
