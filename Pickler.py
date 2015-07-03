@@ -117,9 +117,11 @@ def main(input_dir, output_dir):
                     else:
                         output = output_dir + hex_dir + hex_num + "_" + temp_date + "T" + temp_time + "Z_right.spec.pkl"
                     if not os.path.isfile(output):
-                        (bee_rate, bee_data) = get_data(audio_dir + rec)
-                        save_specgram_pkl(bee_data, converted_date, converted_file_time, rec, output_dir)
-
+                        try:
+                            (bee_rate, bee_data) = get_data(audio_dir + rec)
+                            save_specgram_pkl(bee_data, converted_date, converted_file_time, rec, output_dir)
+                        except ValueError:
+                            print ("Value Error thrown when file was read")
 
 if __name__ == "__main__":
     import sys
