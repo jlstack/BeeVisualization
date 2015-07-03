@@ -81,7 +81,8 @@ def save_specgram_pkl(data, date, file_time, recording, output_dir, show=False):
             spectrum = specgram[:, i]
         if not os.path.isfile(output):
             with open(output, 'wb') as outfile:
-                pickle.dump((spectrum.astype(np.float32), freqs.astype(np.float32), time.astype(np.float32)), outfile)
+                pickle.dump((spectrum.astype(np.float32), freqs.astype(np.float32), time.astype(np.float32)), outfile,
+                             protocol=2)
             plt.close()
 
 
@@ -125,4 +126,4 @@ def main(input_dir, output_dir):
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1], sys.argv[2])
+    main("/Users/lukestack/PycharmProjects/BeeVisualization", "/Users/lukestack/PycharmProjects/BeeVisualization/Pickles")
