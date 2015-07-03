@@ -38,6 +38,7 @@ def to_json(input_dir):
             os.remove(right)
             print(right)
 
+
 def to_pickle(input_dir):
     start, stop = get_start_and_stop()
     for i in range(start, stop):
@@ -65,6 +66,7 @@ def to_pickle(input_dir):
             os.remove(right)
             print(right)
 
+
 def get_start_and_stop():
     start, start_dir = Dates.to_hex('2015-04-14', '00:00:00')
     start = int(start, 16)
@@ -78,6 +80,8 @@ def get_start_and_stop():
     stop = int(stop, 16)
     return start, stop
 
+
 if __name__ == '__main__':
-    to_json('/Users/lukestack/PycharmProjects/BeeVisualization/Pickles/')
+    import sys
+    to_json(sys.argv[1])
 
