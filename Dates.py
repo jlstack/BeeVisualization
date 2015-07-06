@@ -51,8 +51,6 @@ def add_seconds_to_date(date, file_time, seconds):
 
 def convert_to_local(date, file_time):
     local = tz.tzlocal()
-
-
     date = date.split("-")
     file_time = file_time.split(":")
     date = datetime(year=int(date[0]), month=int(date[1]), day=int(date[2]),
