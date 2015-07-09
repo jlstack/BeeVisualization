@@ -41,8 +41,6 @@ def main(input_dir, output_dir):
                         pattern = t + "[0-9]{2}"
                         m = re.search(pattern, rec)
                         if m is not None:
-                            print m.group()
-                        if t in rec:
                             print pit_output_dir + time + '/' + date + '_' + rec
                             shutil.copyfile(audio_dir + rec, pit_output_dir + time + '/' + date + '_' + rec)
 
