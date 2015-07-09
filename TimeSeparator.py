@@ -11,21 +11,21 @@ def main(input_dir, output_dir):
         input_dir += "/"
     if not output_dir.endswith("/"):
         output_dir += "/"
+    if "pit1" in input_dir:
+        pit_output_dir = output_dir + "pit1/"
+    else:
+        pit_output_dir = output_dir + "pit2/"
+
     for time in times:
-        if "pit1" in input_dir:
-            pit_output_dir = output_dir + "pit1/"
-            time_output_dir = output_dir + "pit1/" + time + "/"
-        else:
-            pit_output_dir = output_dir + "pit2/"
-            time_output_dir = output_dir + "pit2/" + time + "/"
+        time_output_dir = pit_output_dir + time + "/"
         if not os.path.isdir(time_output_dir):
             os.makedirs(time_output_dir)
 
     directories = os.listdir(input_dir)
     directories.sort()
     for d in directories:
-        if os.path.isdir(input_dir + d + "/"):
-            audio_dir = input_dir + d + "/"
+        if os.path.isdir(input_dir + d + "/audio/"):
+            audio_dir = input_dir + d + "/audio/"
             date = d.split("-")
             date.reverse()
             date = "-".join(date)
@@ -37,7 +37,7 @@ def main(input_dir, output_dir):
             for rec in recordings:
                 for time in times:
                     for i in range(0, 3):
-                        t = time + "-0" + str(i) + "-"
+                        t = time + ":0" + str(i) + ":"
                         pattern = t + "[0-9]{2}"
                         m = re.search(pattern, rec)
                         if m is not None:
