@@ -3,12 +3,11 @@
 KMeansVis.py
 
 File that visualizes the results gotten from the KMeansSpec.py file.
-There is also a loader function to display the interactive figure.
+There is also a plotter function to display the interactive figure.
 
-Saves a file that is the 2D representation of the clusters, as well
-as their points.
+Saves a file that is the dimension reduction of the data, using PCA.
 
-The loader function loads a pickle of an interactive plot created
+The plotter_2d function loads a pickle of an interactive plot created
 from pyplot.
 
 """
@@ -25,7 +24,7 @@ import time
 from sklearn.metrics import silhouette_samples
 
 '''
-Method that visualizes the cluster centers, as well as the points in question.
+Method that reduces the dimensionality of the data.
 
 The pit parameter is the pit to use.
 
@@ -37,7 +36,7 @@ The num2 parameter is the number of files that was read.
 
 The dims parameter is the number of dimensions to visualize.*OPTIONAL
 '''
-def visualizer(pit, day, num1, num2, dims=50):
+def dim_red(pit, day, num1, num2, dims=50):
     t0 = time.time()
     print("Getting data...")
     #Load the centroids (should be equivalent to num1)
@@ -80,11 +79,11 @@ Example for 3D data: (1,1) (2,1) (3,1)
                      (1,2) (2,2) (3,2)
                      (1,3) (2,3) (3,3)
 
-Used as a helper fucntion for loader.
+Used as a helper fucntion for plotter.
 
-***DO NOT CALL THIS FUNCTION DIRECTLY. USE LOADER TO DO SO.***
+***DO NOT CALL THIS FUNCTION DIRECTLY. USE PLOTTER_2D TO DO SO.***
 '''
-def plotter(dataArray, lim, name, labels, dims):
+def graph_2d(dataArray, lim, name, labels, dims):
     t0 = time.time()
     lim = int(lim)
     dims = int(dims)
@@ -134,19 +133,59 @@ def plotter(dataArray, lim, name, labels, dims):
     plt.close()
 
 '''
-Method that loads a pickle file.  This method plots the data from
-the loadPath, with the cluster labels in labelPath, in the
-dimensionality of the dims parameter.
+Method that plots the data in a 3D scatter plot.
 
-The loadPath parameter is the path to the .p file with PCA reduced
-data.
+Used as a helper fucntion for plotter_3d.
 
-The labelPath parameter is the path to the .pkl file with cluster
-labels in it.
+***DO NOT CALL THIS FUNCTION DIRECTLY. USE PLOTTER_3D TO DO SO.***
+'''
+def graph_3d(dataArray, lim, name, labels):
+    t0 = time.time()
+    lim = int(lim)
+    nums = labels[3]
+    nums = sorted(nums)
+    #Reshape for appending
+    labels = labels[0].reshape(len(labels[0]), 1)
+    fig = plt.figure()
+    fig.suptitle("Image of " + name)
+    pos = 1
+    #Get the cluster colors for later plotting
+    clu_colors = plt.get_cmap("gist_rainbow")
+    norm = colors.Normalize(vmin = 0, vmax = lim)
+    scalarMap = cm.ScalarMappable(cmap = clu_colors, norm = norm)
+    #Organize data points through their cluster numbers
+    data = np.append(dataArray[0:len(dataArray)-lim], labels, 1)
+    data = data[np.argsort(data[:, -1], kind = 'quicksort')]
+    ax = fig.add_subplot(111, projection = '3d')
+    index = 0
+    for i in range(lim):
+        ax.scatter(data[index:index + nums[i][1], 0], data[index:index + nums[i][1], 1], data[index:index + nums[i][1], 2], c=scalarMap.to_rgba(i))
+        index += nums[i][1]
+    for i in range(1, lim + 1):
+        if dataArray[-i] in dataArray[:len(dataArray)-lim]:
+            ax.scatter(dataArray[-i, 0], dataArray[-i, 1], dataArray[-i, 2], c = scalarMap.to_rgba(i-1), marker = '^', s = 35)
+        else:
+            ax.scatter(dataArray[-i, 0], dataArray[-i, 1], dataArray[-i, 2], c='#ffffff', marker = '^', s = 35)
+    print("Time to graph items: " + str(time.time() - t0) + " sec.")
+    #Save the interactive visual as a pickle
+    plt.show()
+    plt.close()
+
+
+'''
+Method that helps load the data to be graphed into many 2D plots.
+
+The pit parameter is the pit to choose.
+
+The day parameter is the day to plot.
+
+The clusters parameter is the number of clusters to plot.
+
+The files parameter is the number of files to cluster.
 
 The dims parameter is the number of dimensions to visualize.*OPTIONAL
 '''
-def loader(pit, day, clusters, files, dims = 2):
+def plotter_2d(pit, day, clusters, files, dims = 2):
     data = pickle.load(open("/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + day + "/clusterdata_" + str(clusters) + "_" + str(files) + "_reduced.p", 'rb'), encoding = 'bytes')
     labels = pickle.load(open("/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + day + "/clusterdata_" + str(clusters) + "_" + str(files) + ".pkl", 'rb'), encoding = 'bytes')
     try:
@@ -158,6 +197,32 @@ def loader(pit, day, clusters, files, dims = 2):
         print("Silhouette scoring cannot be done.")
     num1 = int(clusters)
     path1 = "Pit:" + pit + " Day:" + day + " Clusters:" + str(clusters) + " Files:" + str(files)
-    plotter(data, num1, path1, labels, dims)
+    graph_2d(data, num1, path1, labels, dims)
+    plt.close()
+
+'''
+Method that helps load the data to be graphed into a 3D plot.
+
+The pit parameter is the pit to choose.
+
+The day parameter is the day to plot.
+
+The clusters parameter is the number of clusters to plot.
+
+The files parameter is the number of files to cluster.
+'''
+def plotter_3d(pit, day, clusters, files):
+    data = pickle.load(open("/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + day + "/clusterdata_" + str(clusters) + "_" + str(files) + "_reduced.p", 'rb'), encoding = 'bytes')
+    labels = pickle.load(open("/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + day + "/clusterdata_" + str(clusters) + "_" + str(files) + ".pkl", 'rb'), encoding = 'bytes')
+    try:
+        if len(labels[0]) < 400:
+            silhouettes = silhouette_samples(data, labels[0])
+            print(silhouettes)
+            print(np.mean(silhouettes))
+    except Exception:
+        print("Silhouette scoring cannot be done.")
+    num1 = int(clusters)
+    path1 = "Pit:" + pit + " Day:" + day + " Clusters:" + str(clusters) + " Files:" + str(files)
+    graph_3d(data, num1, path1, labels)
     plt.close()
 

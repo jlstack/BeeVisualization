@@ -2,7 +2,7 @@ __author__ = 'lukestack'
 
 import time
 import pytz
-from dateutil.tz import tzlocal
+from dateutil import tz
 from datetime import datetime, timedelta
 
 
@@ -33,8 +33,8 @@ def convert_to_utc(date, file_time):
     date = date.split("-")
     file_time = file_time.split(":")
     date = datetime(year=int(date[0]), month=int(date[1]), day=int(date[2]),
-                    hour=int(file_time[0]), minute=int(file_time[1]), second=int(file_time[2]), tzinfo=tzlocal())
-    date.replace(tzinfo=tzlocal()).astimezone(tz=utc)
+                    hour=int(file_time[0]), minute=int(file_time[1]), second=int(file_time[2]), tzinfo=tz.tzlocal())
+    date.replace(tzinfo=tz.tzlocal()).astimezone(tz=utc)
     date = utc.normalize(date)
     return str(date.date()), str(date.time())
 
@@ -43,7 +43,18 @@ def add_seconds_to_date(date, file_time, seconds):
     date = date.split("-")
     file_time = file_time.split(":")
     d = datetime(year=int(date[0]), month=int(date[1]), day=int(date[2]),
-                  hour=int(file_time[0]), minute=int(file_time[1]), second=int(file_time[2]), tzinfo=utc)
+                 hour=int(file_time[0]), minute=int(file_time[1]), second=int(file_time[2]), tzinfo=utc)
     date = (d + timedelta(seconds=seconds)).date()
     file_time = (d + timedelta(seconds=seconds)).time()
     return str(date), str(file_time)
+
+
+def convert_to_local(date, file_time):
+    local = tz.tzlocal()
+    date = date.split("-")
+    file_time = file_time.split(":")
+    date = datetime(year=int(date[0]), month=int(date[1]), day=int(date[2]),
+                    hour=int(file_time[0]), minute=int(file_time[1]), second=int(file_time[2]), tzinfo=utc)
+    date.replace(tzinfo=utc)
+    date = date.astimezone(tz=local)
+    return str(date.date()), str(date.time())

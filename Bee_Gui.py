@@ -8,24 +8,52 @@ import os
 import Dates
 import ftplib
 from StringIO import StringIO
+from scipy.io.wavfile import read
+from pydub import AudioSegment
+import tempfile
 
-user = ''
+user = 'stackjl'
 password = ''
 ftp = ftplib.FTP('cs.appstate.edu', user, password)
 input_dir = "/usr/local/bee/beemon/beeW/Luke/specgrams2/pit2/"
-start = "5/5/9/3/d/1/1/"
+start = "5/5/9/3/c/f/3/"
+mp3_dirs = ["/usr/local/bee/beemon/mp3/pit2/%s/", "/usr/local/bee/beemon/pit2/%s/audio/"]
 ftp.cwd(input_dir + start)
-img_dir = './Images/'
-if not os.path.exists(img_dir):
-    os.makedirs(img_dir)
+gui_dir = './Gui_Files/'
+if not os.path.exists(gui_dir):
+    os.makedirs(gui_dir)
+
+
+def get_data(path):
+    if path.endswith(".wav"):
+        bee_rate, bee_data = read(path)
+    else:
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        if path.endswith(".flac"):
+            sound = AudioSegment.from_file(path, "flac")
+            sound.export(temp.name, format="wav")
+        elif path.endswith(".mp3"):
+            sound = AudioSegment.from_file(path, "mp3")
+            sound.export(temp.name, format="wav")
+        bee_rate, bee_data = read(temp.name)
+        temp.close()
+    return bee_rate, bee_data
+
+
+def make_hex8(hex_num):
+    for i in range(0, 8 - len(hex_num)):
+        hex_num += "0"
+    return hex_num
+
 
 class BeeApp(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
         self.input_dir = input_dir
         self.current_input = input_dir + start
-        self.img_dir = img_dir
-        self.leftmost = self.make_hex8("".join(start.split("/")))
+        self.gui_dir = gui_dir
+        self.mp3_dirs = mp3_dirs
+        self.leftmost = make_hex8("".join(start.split("/")))
         self.center = format(int(self.leftmost, 16) + 8, 'x')
         self.zoom = 1
         self.cax = None
@@ -43,21 +71,29 @@ class BeeApp(tk.Tk):
         self.zoom_in = tk.Button(self, text="+", command=self.on_zoom_in)
         self.zoom_in.grid(row=4, column=2)
 
+        self.play = tk.Button(self, text="Play", command=self.on_play)
+        self.play.grid(row=4, column=3)
+
         self.left = tk.Button(self, text="<", command=self.on_left)
         self.left.grid(row=4, column=4)
 
         self.right = tk.Button(self, text=">", command=self.on_right)
         self.right.grid(row=4, column=5)
 
+        self.messages = tk.Message(self, text="", relief='raised', width=600)
+        self.messages.grid(row=5, column=0, columnspan=7)
+
     def on_zoom_out(self):
         if self.zoom < 28:
             self.zoom += 1
             self.update_image(self.get_next_16(self.center))
+            self.messages.config(text="")
 
     def on_zoom_in(self):
         if self.zoom != 1:
             self.zoom -= 1
             self.update_image(self.get_next_16(self.center))
+            self.messages.config(text="")
 
     def update_image(self, image):
         if image is not None:
@@ -68,19 +104,60 @@ class BeeApp(tk.Tk):
             return True
         return False
 
+    def on_play(self):
+        audio_dir = None
+        audio_file = None
+        for i in range(0, 60):
+            sec = int(self.center, 16)
+            sec -= i
+            sec = format(sec, 'x')
+            date, time = Dates.to_date(sec)
+            date, time = Dates.convert_to_local(date, time)
+            date = date.split('-')
+            date.reverse()
+            date = '-'.join(date)
+            for j in range(0, len(self.mp3_dirs)):
+                try:
+                    ftp.cwd(self.mp3_dirs[j] % date)
+                    files = ftp.nlst()
+                    if files is not None:
+                        for f in files:
+                            if time in f or '-'.join(time.split(':')) in f:
+                                audio_dir = self.mp3_dirs[j] % date
+                                audio_file = f
+                                break
+                except ftplib.error_perm:
+                    pass
+            if audio_file is not None:
+                break
+        if audio_file is not None:
+            print audio_dir + audio_file
+            with open(self.gui_dir + audio_file, 'wb') as r:
+                ftp.retrbinary('RETR ' + audio_dir + audio_file, r.write)
+            rate, wav = get_data(self.gui_dir + audio_file)
+            self.messages.config(text="Played: " + audio_file)
+            import pyaudio
+            p = pyaudio.PyAudio()
+            stream = p.open(format=p.get_format_from_width(2), channels=1, rate=rate, output=True)
+            stream.write(wav.tostring())
+            stream.close()
+            p.terminate()
+        else:
+            self.messages.config(text="No audio for this time")
+
     def on_right(self):
         cen = int(self.center, 16)
         cen += 2**(3 + self.zoom) / 2
         self.center = format(cen, 'x')
-        self.get_next_16(self.center, 'right')
+        self.get_next_16(self.center)
 
     def on_left(self):
         cen = int(self.center, 16)
         cen -= 2**(3 + self.zoom) / 2
         self.center = format(cen, 'x')
-        self.get_next_16(self.center, 'left')
+        self.get_next_16(self.center)
 
-    def get_next_16(self, hex_num, direction=None):
+    def get_next_16(self, hex_num):
         print ("Zoom: ", self.zoom)
         combined_spec = None
         num = int(hex_num, 16)
@@ -123,16 +200,14 @@ class BeeApp(tk.Tk):
                     combined_spec = np.vstack((combined_spec, [0] * 2049))
         hex_time1 = '{:08x}'.format(int(num))
         hex_time2 = '{:08x}'.format(int(num + 2**(3 + self.zoom) - 1))
-        file_name = self.img_dir + hex_time1 + "_" + hex_time2 + "_zoom_" + str(self.zoom) + ".png"
-        self.leftmost = self.make_hex8(hex_time1)
+        file_name = self.gui_dir + hex_time1 + "_" + hex_time2 + "_zoom_" + str(self.zoom) + ".png"
+        self.leftmost = make_hex8(hex_time1)
         self.create_fig(combined_spec, hex_time1, hex_time2, file_name)
         if self.panel1 is not None:
             self.update_image(file_name)
         return file_name
 
     def create_fig(self, combined_spec, hex_time1, hex_time2, file_name):
-        hex_time1 = self.make_hex8(hex_time1)
-        hex_time2 = self.make_hex8(hex_time2)
         date1, file_time1 = Dates.to_date(hex_time1)
         date2, file_time2 = Dates.to_date(hex_time2)
         if not date1 == date2:
@@ -157,19 +232,15 @@ class BeeApp(tk.Tk):
         plt.savefig(file_name)
         plt.close()
 
-    def make_hex8(self, hex_num):
-        for i in range(0, 8 - len(hex_num)):
-            hex_num += "0"
-        return hex_num
-
 
 def on_closing():
+    ftp.close()
     app.destroy()
-    for the_file in os.listdir(img_dir):
-        file_path = os.path.join(img_dir, the_file)
+    for the_file in os.listdir(gui_dir):
+        file_path = os.path.join(gui_dir, the_file)
         if os.path.isfile(file_path):
             os.remove(file_path)
-    os.rmdir(img_dir)
+    os.rmdir(gui_dir)
 
 app = BeeApp()
 app.protocol("WM_DELETE_WINDOW", on_closing)

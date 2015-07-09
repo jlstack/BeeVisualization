@@ -43,8 +43,9 @@ def KMeans_dir(path, pit, date=None, n=None, limit=None):
     #Set seed for consistent cluster center initialization
     np.random.seed(327)
     #Get the current directory for data storage, as well as getting the audio path based on input
-    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + date + "/"
+    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
     data = []
+    dates = []
     count = 0
     print("Reading wav files...")
     #Make sure the storage directories are there
@@ -56,9 +57,19 @@ def KMeans_dir(path, pit, date=None, n=None, limit=None):
         os.makedirs(save_dir + "Left/")
     if not os.path.isdir(save_dir + "Right/"):
         os.makedirs(save_dir + "Right/")
-    if path == "/usr/local/bee/bee-mp3/":
-        audiofiles = os.listdir(path)
-        audiofiles.sort()
+    if path == "/usr/local/bee/beemon/mp3/":
+        if date is not None:
+            path = path + pit + "/" + date + "/"
+            audiofiles = os.listdir(path)
+        else:
+            path = path + pit + "/"
+            audiofiles = []
+            for dir in os.listdir(path):
+                for d in os.listdir(path + dir):
+                    audiofiles.append(d)
+                    dates.append(dir)
+                if limit is not None and limit <= len(audiofiles):
+                    break
         parsefiles = []
         #Make sure the limit is set
         if limit is None:
@@ -66,17 +77,22 @@ def KMeans_dir(path, pit, date=None, n=None, limit=None):
         limited = 0
         for rec in audiofiles:
             name = os.path.splitext(rec)[1]
-            if pit == str(rec.split('_')[0]):
-                if str(rec.split('_')[1]) == date or date is None:
-                    if name == ".wav" or name == ".mp3" or name == ".flac":
-                            parsefiles.append(rec)
-                            limited += 1
-                            if len(parsefiles) == limit:
-                                break
+            if name == ".wav" or name == ".mp3" or name == ".flac":
+                parsefiles.append(rec)
+                limited += 1
+                if len(parsefiles) == limit:
+                    break
     else:
-        path = path + pit + "/" + date
-        audiofiles= os.listdir(path + "/audio/")
-        audiofiles.sort()
+        if date is not None:
+            path = path + pit + "/" + date
+            audiofiles= os.listdir(path + "/audio/")
+        else:
+            path = path + pit + "/"
+            audiofiles = []
+            for dir in os.listdir(path):
+                audiofiles.append(os.listdir(path + dir))
+                if limit is not None and limit <= len(audiofiles):
+                    break
         parsefiles = []
         if limit is None:
             limit = len(audiofiles)
@@ -89,24 +105,24 @@ def KMeans_dir(path, pit, date=None, n=None, limit=None):
     limit = limited
     print("Files to parse: " + str(limit))
     #Get the recordings and parse them for clustering
-    for recording in parsefiles:
+    for recording in range(len(parsefiles)):
         if count % int(limit/5) == 0:
             print(str(count) + " out of " + str(limit) + " audio files read!")
         if count >= limit:
             break
-        filename = os.path.splitext(recording)[0]
-        if os.path.splitext(recording)[1] != ".wav":
+        filename = os.path.splitext(parsefiles[recording])[0]
+        if os.path.splitext(parsefiles[recording])[1] != ".wav":
             temp = tempfile.NamedTemporaryFile(suffix=".wav")
-            if os.path.splitext(recording)[1] == ".mp3":
-                sound = AudioSegment.from_file(path + recording, "mp3")
+            if os.path.splitext(parsefiles[recording])[1] == ".mp3":
+                sound = AudioSegment.from_file(path + dates[recording] + "/" + parsefiles[recording], "mp3")
                 sound.export(temp.name, format = "wav")
-            if os.path.splitext(recording)[1] == ".flac":
-                sound = AudioSegment.from_file(path + recording, "flac")
+            if os.path.splitext(parsefiles[recording])[1] == ".flac":
+                sound = AudioSegment.from_file(path + dates[recording] + "/" + recording, "flac")
                 sound.export(temp.name, format = "flac")
             wav = wave.open(temp, 'r')
         else:
             #Open the .wav file and get the vital information
-            wav = wave.open(path + "/audio/" + recording, 'r')
+            wav = wave.open(path + "/audio/" + parsefiles[recording], 'r')
         frames = wav.readframes(-1)
         sig = np.fromstring(frames, "Int16")
         #Decimate the wav signal for parsing
@@ -114,10 +130,16 @@ def KMeans_dir(path, pit, date=None, n=None, limit=None):
         #pxx is the periodograms, freqs is the frequencies
         pxx, freqs, times, img = plt.specgram(dsarray, NFFT = 1024, noverlap = 512, Fs = 1225)
         #Plot against the time. Then, title it and limit the y-axis to 600
-        if "left" in recording:
-            np.save(save_dir + "Left/" + recording, pxx)
-        elif "right" in recording:
-            np.save(save_dir + "Right/" + recording, pxx)
+        if "left" in parsefiles[recording] and not os.path.isfile(save_dir + "Left/" + parsefiles[recording] + ".npy"):
+            if date is not None:
+                np.save(save_dir + "Left/" + parsefiles[recording], pxx)
+            else:
+                np.save(save_dir + "Left/" + dates[recording] + '_' + parsefiles[recording], pxx)
+        elif "right" in parsefiles[recording] and not os.path.isfile(save_dir + "Right/" + parsefiles[recording] + ".npy"):
+            if date is not None:
+                np.save(save_dir + "Right/" + parsefiles[recording], pxx)
+            else:
+                np.save(save_dir + "Right/" + dates[recording] + '_' + parsefiles[recording], pxx)
         count += 1
         #Append it to the list of data
         for index in range(pxx.shape[1]):
