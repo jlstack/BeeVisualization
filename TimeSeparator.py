@@ -8,7 +8,10 @@ def main(input_dir, output_dir, time):
         input_dir += "/"
     if not output_dir.endswith("/"):
         output_dir += "/"
-    output_dir = output_dir + time + "/"
+    if "pit1" in input_dir:
+        output_dir = output_dir + time + "/pit1/"
+    else:
+        output_dir = output_dir + time + "/pit2/"
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
     directories = os.listdir(input_dir)
