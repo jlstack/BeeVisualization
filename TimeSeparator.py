@@ -1,6 +1,7 @@
 __author__ = 'lukestack'
 import os
 import shutil
+import re
 
 times = ['00', '05', '08', '12', '15', '17', '20']
 
@@ -12,19 +13,19 @@ def main(input_dir, output_dir):
         output_dir += "/"
     for time in times:
         if "pit1" in input_dir:
-            pit_output_dir = output_dir + "/pit1/"
-            time_output_dir = output_dir + "/pit1/" + time + "/"
+            pit_output_dir = output_dir + "pit1/"
+            time_output_dir = output_dir + "pit1/" + time + "/"
         else:
-            pit_output_dir = output_dir + "/pit2/"
-            time_output_dir = output_dir + "/pit2/" + time + "/"
+            pit_output_dir = output_dir + "pit2/"
+            time_output_dir = output_dir + "pit2/" + time + "/"
         if not os.path.isdir(time_output_dir):
             os.makedirs(time_output_dir)
 
     directories = os.listdir(input_dir)
     directories.sort()
     for d in directories:
-        if os.path.isdir(input_dir + d + "/audio/"):
-            audio_dir = input_dir + d + "/audio/"
+        if os.path.isdir(input_dir + d + "/"):
+            audio_dir = input_dir + d + "/"
             date = d.split("-")
             date.reverse()
             date = "-".join(date)
@@ -36,9 +37,13 @@ def main(input_dir, output_dir):
             for rec in recordings:
                 for time in times:
                     for i in range(0, 3):
-                        t = time + ":0" + str(i) + ":"
+                        t = time + "-0" + str(i) + "-"
+                        pattern = t + "[0-9]{2}"
+                        m = re.search(pattern, rec)
+                        if m is not None:
+                            print m.group()
                         if t in rec:
-                            print time_output_dir + date + '_' + rec
+                            print pit_output_dir + time + '/' + date + '_' + rec
                             shutil.copyfile(audio_dir + rec, pit_output_dir + time + '/' + date + '_' + rec)
 
 
