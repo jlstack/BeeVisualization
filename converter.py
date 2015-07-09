@@ -49,7 +49,7 @@ def to_pickle(input_dir):
         right = input_dir + date_dir + hex_date + "_" + date + 'T' + time + 'Z_right.spec.pkl.json'
         if os.path.isfile(left):
             with open(left, 'rb') as f:
-                data = json.load(pic)
+                data = json.load(f)
             data = np.array(data[0]), np.array(data[1]), np.array(data[2])
             l_pkl = left[:left.index('.json')]
             with open(l_pkl, 'w') as outfile:
@@ -58,7 +58,7 @@ def to_pickle(input_dir):
             print(left)
         if os.path.isfile(right):
             with open(right, 'rb') as f:
-                data = json.load(pic)
+                data = json.load(f)
             data = np.array(data[0]), np.array(data[1]), np.array(data[2])
             r_pkl = left[:right.index('.json')]
             with open(r_pkl, 'w') as outfile:
@@ -68,7 +68,7 @@ def to_pickle(input_dir):
 
 
 def get_start_and_stop():
-    start, start_dir = Dates.to_hex('2015-04-14', '00:00:00')
+    start, start_dir = Dates.to_hex('2015-03-01', '00:00:00')
     start = int(start, 16)
     now = datetime.now()
     curr_time = str(now.time())
@@ -83,5 +83,5 @@ def get_start_and_stop():
 
 if __name__ == '__main__':
     import sys
-    to_json(sys.argv[1])
+    to_pickle(sys.argv[1])
 
