@@ -104,10 +104,10 @@ class BeeApp(tk.Tk):
         if audio_file is not None:
             print audio_dir + audio_file
             temp = tempfile.NamedTemporaryFile(suffix=".wav")
+            temp.close()
             with open(temp.name, 'wb') as r:
                 ftp.retrbinary('RETR ' + audio_dir + audio_file, r.write)
             rate, wav = get_data(temp.name)
-            temp.close()
             thread.start_new_thread(play, (rate, wav))
 
     def on_right(self):
@@ -169,7 +169,6 @@ class BeeApp(tk.Tk):
         self.create_fig(combined_spec, hex_time1, hex_time2)
 
     def create_fig(self, combined_spec, hex_time1, hex_time2):
-        print combined_spec.shape
         date1, file_time1 = Dates.to_date(hex_time1)
         date2, file_time2 = Dates.to_date(hex_time2)
         if not date1 == date2:
@@ -216,6 +215,7 @@ def get_data(path):
         bee_rate, bee_data = read(path)
     else:
         temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        temp.close()
         if path.endswith(".flac"):
             sound = AudioSegment.from_file(path, "flac")
             sound.export(temp.name, format="wav")
@@ -223,7 +223,6 @@ def get_data(path):
             sound = AudioSegment.from_file(path, "mp3")
             sound.export(temp.name, format="wav")
         bee_rate, bee_data = read(temp.name)
-        temp.close()
     return bee_rate, bee_data
 
 
