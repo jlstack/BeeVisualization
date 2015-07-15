@@ -12,14 +12,10 @@ from scipy.io.wavfile import read as read_wav
 from sklearn import decomposition
 import numpy as np
 import wave
-#from scipy.spatial import distance as d
-#import sklearn.preprocessing as p
 from scipy import signal
 from matplotlib import pyplot as plt
 import os
 from time import time
-#from collections import Counter
-#from sklearn import metrics
 from pydub import AudioSegment
 import pickle
 import tempfile
@@ -37,7 +33,6 @@ The limit parameter is the number of files to include.
 '''
 def NMF_dir(path, pit, date=None, limit=None):
     t0 = time()
-    #Set seed for consistent cluster center initialization
     #Get the current directory for data storage, as well as getting the audio path based on input
     save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
     data = []
@@ -53,6 +48,7 @@ def NMF_dir(path, pit, date=None, limit=None):
         os.makedirs(save_dir + "Left/")
     if not os.path.isdir(save_dir + "Right/"):
         os.makedirs(save_dir + "Right/")
+    #If using the mp3 structure
     if path == "/usr/local/bee/beemon/mp3/":
         if date is not None:
             path = path + pit + "/" + date + "/"
@@ -79,6 +75,7 @@ def NMF_dir(path, pit, date=None, limit=None):
                 limited += 1
                 if len(parsefiles) == limit:
                     break
+    #If not using the mp3 structure
     else:
         if date is not None:
             path = path + pit + "/" + date
@@ -108,6 +105,7 @@ def NMF_dir(path, pit, date=None, limit=None):
             print(str(count) + " out of " + str(limit) + " audio files read!")
         if count >= limit:
             break
+        #Check to see if it's a wav file. If not, convert in a temp file.
         filename = os.path.splitext(parsefiles[recording])[0]
         if os.path.splitext(parsefiles[recording])[1] != ".wav":
             temp = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -123,17 +121,25 @@ def NMF_dir(path, pit, date=None, limit=None):
                 else:
                     sound = AudioSegment.from_file(path + parsefiles[recording], "flac")
                 sound.export(temp.name, format = "flac")
-            wav = wave.open(temp, 'r')
+            try:
+                wav = wave.open(temp, 'r')
+            except:
+                print(parsefiles[recording] + " corrupted or not audio file.")
+                continue
         else:
-            #Open the .wav file and get the vital information
-            wav = wave.open(path + "/audio/" + parsefiles[recording], 'r')
+            try:
+                #Open the .wav file and get the vital information
+                wav = wave.open(path + "/audio/" + parsefiles[recording], 'r')
+            except:
+                print(parsefiles[recording] + " corrupted or not audio file.")
+                continue
         frames = wav.readframes(-1)
         sig = np.fromstring(frames, "Int16")
         #Decimate the wav signal for parsing
         dsarray = signal.decimate(sig, 36)
         #pxx is the periodograms, freqs is the frequencies
         pxx, freqs, times, img = plt.specgram(dsarray, NFFT = 1024, noverlap = 512, Fs = 1225)
-        #Plot against the time. Then, title it and limit the y-axis to 600
+        #Save the data for later use.
         if "left" in parsefiles[recording] and not os.path.isfile(save_dir + "Left/" + parsefiles[recording] + ".npy"):
             if date is not None:
                 np.save(save_dir + "Left/" + parsefiles[recording], pxx)
@@ -149,21 +155,18 @@ def NMF_dir(path, pit, date=None, limit=None):
         for index in range(pxx.shape[1]):
             data.append(pxx[:,index])
     print("Number of periodograms: " + str(len(data)))
-    #Make sure the number of clusters is set
-    #if n is None:
-    #    n = 10
-    #n = int(n)
-    #Actually do the KMeans clustering
+    #Actually do the NMF computation
     t2 = time()
     print("Data gathering complete. Doing nonnegative matrix factorization.")
     estimator = decomposition.NMF(init = 'nndsvdar', max_iter=10000, random_state = 327)
     print("Fitting the model to your data...")
     print("This may take some time...")
-    estimator.fit(data)
+    w = estimator.fit_transform(data)
+    h = estimator.components_
     t3 = time()
     print(t3 - t2)
-    #Save the labels, cluster centers, overall inertia, and the cluster counts into a file called "clusterdata.npy"
-    saveddata = [estimator.components_, estimator.reconstruction_err_]
+    #Save the dot product of the 2 matrices, the reconstruction error, the transformed data matrix, and the component matrix into a file called "NMFdata_xxx.npy"
+    saveddata = [np.dot(w,h), estimator.reconstruction_err_, w, h]
     print("Saving results...")
     pickle.dump(saveddata, open(save_dir + "/NMFdata_" + str(limit) + ".pkl", "wb"), protocol = 2)
     print("Done.")
@@ -176,11 +179,14 @@ The path parameter is the path to the NMFdata_xx.pkl file to visualize.
 '''
 def NMF_vis3d(path):
     t0 = time()
+    #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
     components = pickledData[0]
     fig = plt.figure()
     ax = fig.add_subplot(111, projection = '3d')
+    #Plot the 3D figure using the first 3 dimensions
     ax.scatter(components[:, 0], components[:, 1], components[:, 2])
+    #Set the axis to scientific notation
     ax.xaxis.get_major_formatter().set_powerlimits((0,1))
     ax.yaxis.get_major_formatter().set_powerlimits((0,1))
     print("Time to graph items: " + str(time() - t0) + " sec.")
@@ -196,11 +202,13 @@ The dims parameter is the number of dimensions to visualize.
 '''
 def NMF_vis2d(path, dims = 2):
     t0 = time()
+    #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
     components = pickledData[0]
     fig = plt.figure()
     pos = 1
     dims = int(dims)
+    #Plot the number of dimensions, from dim 1 to provided parameter.
     for y in range(dims):
         print("Loading dimension " + str(y + 1) + ".")
         for x in range(dims):
