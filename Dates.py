@@ -58,3 +58,11 @@ def convert_to_local(date, file_time):
     date.replace(tzinfo=utc)
     date = date.astimezone(tz=local)
     return str(date.date()), str(date.time())
+
+
+def get_current_date():
+    now = datetime.now()
+    curr_time = str(now.time())
+    curr_time = curr_time[:curr_time.rfind('.')]
+    curr_date = str(now.date())
+    return curr_date, curr_time
