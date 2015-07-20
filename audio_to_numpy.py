@@ -66,7 +66,7 @@ def save_specgram_pkl(data, date, file_time, recording, output_dir, show=False):
     print (date, file_time, hex_num)
     for i in range(-1, specgram.shape[1] + 1):
         start_date, start_time = Dates.add_seconds_to_date(date, file_time, i)
-        end_date, end_time = Dates.add_seconds_to_date(start_date, start_time, 1)
+        end_date, end_time = Dates.add_seconds_to_date(start_date, start_time, 60)
         start_datetime = start_date + 'T' + start_time
         end_datetime = end_date + 'T' + end_time
         hex_num, hex_dir = Dates.to_hex(start_date, start_time)
@@ -82,11 +82,8 @@ def save_specgram_pkl(data, date, file_time, recording, output_dir, show=False):
             intensities = specgram[:, specgram.shape[1] - 1]
         else:
             intensities = specgram[:, i]	
-        data = {}
-        data["intensities"] = intensities.tolist()
-        data["sample_rate"] = sample_rate
-        data["start_datetime"] = start_datetime
-        data["end_datetime"] = end_datetime
+        data = {"intensities": intensities.astype(np.float32).tolist(), "sample_rate": sample_rate,
+                "start_datetime": start_datetime, "end_datetime": end_datetime}
         if not os.path.isfile(output):
             np.save(output, data)
         plt.clf()
