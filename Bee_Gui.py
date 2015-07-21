@@ -1,12 +1,13 @@
 __author__ = 'lukestack'
 import matplotlib
+
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.backend_bases import key_press_handler
-import Tkinter as tk
+import Tkinter as Tk
+import tkSimpleDialog
 import pickle
 import matplotlib.pyplot as plt
-import numpy as np
 import Dates
 import ftplib
 from StringIO import StringIO
@@ -15,55 +16,82 @@ from pydub import AudioSegment
 import tempfile
 import thread
 import pyaudio
+import os
+import numpy as np
 
 user = 'stackjl'
-password = ''
+password = 'sta.44,ck'
 ftp = ftplib.FTP('cs.appstate.edu', user, password)
-input_dir = "/usr/local/bee/beemon/beeW/Luke/specgrams2/pit2/"
-start = "5/5/9/3/c/f/3/"
-mp3_dirs = ["/usr/local/bee/beemon/mp3/pit2/%s/", "/usr/local/bee/beemon/pit2/%s/audio/"]
+input_dir = "/usr/local/bee/beemon/beeW/Luke/specgrams/pit1/"
+start = "5/5/2/e/9/9/f/"
+mp3_dirs = ["/usr/local/bee/beemon/mp3/pit1/%s/", "/usr/local/bee/beemon/pit1/%s/audio/"]
 ftp.cwd(input_dir + start)
+channel = 'right'
 
 
-class BeeApp(tk.Tk):
-    def __init__(self):
-        tk.Tk.__init__(self)
+class DateDialog(tkSimpleDialog.Dialog):
+    def body(self, master):
+        self.withdraw()
+        Tk.Label(master, text="Date:").grid(row=0)
+        Tk.Label(master, text="Time:").grid(row=1)
+
+        self.date = Tk.Entry(master)
+        self.time = Tk.Entry(master)
+        self.date.insert(0, "2015-04-15")
+        self.time.insert(0, "17:03:54")
+
+        self.date.grid(row=0, column=1)
+        self.time.grid(row=1, column=1)
+        return self.date  # initial focus
+
+    def apply(self):
+        date = self.date.get()
+        time = self.time.get()
+        self.result = date, time
+
+
+class BeeApp(Tk.Tk):
+    def __init__(self, date, time):
+        Tk.Tk.__init__(self)
+        self.title("Bee App")
         self.input_dir = input_dir
-        self.current_input = input_dir + start
+        staret_hex, start_dir = Dates.to_hex(date, time)
+        self.current_input = input_dir + start_dir
+        self.channel = channel
         self.mp3_dirs = mp3_dirs
-        self.leftmost = make_hex8("".join(start.split("/")))
+        self.leftmost = make_hex8("".join(start_dir.split("/")))
         self.center = format(int(self.leftmost, 16) + 8, 'x')
         self.zoom = 1
-        self.cax = self.fig = self.ax = None
+        self.files = {}
+        self.cax = self.fig = self.ax = self.stream = None
         self.get_next_16(self.center)
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.show()
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
         toolbar = NavigationToolbar2TkAgg(self.canvas, self)
         toolbar.update()
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
 
         def on_key_event(event):
-            print('you pressed %s'%event.key)
             key_press_handler(event, self.canvas, toolbar)
 
         self.canvas.mpl_connect('key_press_event', on_key_event)
 
-        self.zoom_out = tk.Button(self, text="-", command=self.on_zoom_out)
-        self.zoom_out.pack(side=tk.LEFT)
+        self.zoom_out = Tk.Button(self, text="-", command=self.on_zoom_out)
+        self.zoom_out.pack(side=Tk.LEFT)
 
-        self.zoom_in = tk.Button(self, text="+", command=self.on_zoom_in)
-        self.zoom_in.pack(side=tk.LEFT)
+        self.zoom_in = Tk.Button(self, text="+", command=self.on_zoom_in)
+        self.zoom_in.pack(side=Tk.LEFT)
 
-        self.play = tk.Button(self, text="Play", command=self.on_play)
-        self.play.pack(side=tk.LEFT, expand=tk.YES)
+        self.play = Tk.Button(self, text="Play", command=self.on_play)
+        self.play.pack(side=Tk.LEFT, expand=Tk.YES)
 
-        self.right = tk.Button(self, text=">", command=self.on_right)
-        self.right.pack(side=tk.RIGHT)
+        self.right = Tk.Button(self, text=">", command=self.on_right)
+        self.right.pack(side=Tk.RIGHT)
 
-        self.left = tk.Button(self, text="<", command=self.on_left)
-        self.left.pack(side=tk.RIGHT)
+        self.left = Tk.Button(self, text="<", command=self.on_left)
+        self.left.pack(side=Tk.RIGHT)
 
     def on_zoom_out(self):
         if self.zoom < 28:
@@ -103,7 +131,8 @@ class BeeApp(tk.Tk):
                 break
         if audio_file is not None:
             print audio_dir + audio_file
-            temp = tempfile.NamedTemporaryFile(suffix=".wav")
+            filename, file_extension = os.path.splitext(audio_file)
+            temp = tempfile.NamedTemporaryFile(suffix=file_extension)
             temp.close()
             with open(temp.name, 'wb') as r:
                 ftp.retrbinary('RETR ' + audio_dir + audio_file, r.write)
@@ -112,13 +141,13 @@ class BeeApp(tk.Tk):
 
     def on_right(self):
         cen = int(self.center, 16)
-        cen += 2**(3 + self.zoom) / 2
+        cen += 2 ** (3 + self.zoom) / 2
         self.center = format(cen, 'x')
         self.get_next_16(self.center)
 
     def on_left(self):
         cen = int(self.center, 16)
-        cen -= 2**(3 + self.zoom) / 2
+        cen -= 2 ** (3 + self.zoom) / 2
         self.center = format(cen, 'x')
         self.get_next_16(self.center)
 
@@ -126,34 +155,42 @@ class BeeApp(tk.Tk):
         print ("Zoom: ", self.zoom)
         combined_spec = None
         num = int(hex_num, 16)
-        num -= 2**(3 + self.zoom) / 2
-        for i in range(0, 2**(3 + self.zoom), 2**(self.zoom - 1)):
+        num -= 2 ** (3 + self.zoom) / 2
+        for i in range(0, 2 ** (3 + self.zoom), 2 ** (self.zoom - 1)):
             i_hex = '{:08x}'.format(int(num + i))
             i_hex = i_hex[:int(len(i_hex) - ((self.zoom - 1) / 4))]
             i_dir = "/".join(i_hex[:-1]) + "/"
             i_file = None
             try:
-                ftp.cwd(input_dir + i_dir)
-                files = ftp.nlst()
-                for f in files:
-                    if "left" in f:
-                        if 4 - (self.zoom - 1) % 4 == 4:
-                            if i_hex in f:
-                                i_file = f
-                                break
-                        else:
-                            bi = "{0:04b}".format(int(i_hex[-1], 16))[:(4 - (self.zoom - 1) % 4)]
-                            if i_hex[:-1] + "_" + bi + "_" in f:
-                                i_file = f
-                                break
+                if self.zoom == 1:
+                    date, time = Dates.to_date(i_hex)
+                    fname = i_hex + "_" + date + "T" + time + "Z_" + self.channel + ".spec.pkl"
+                elif 4 - (self.zoom - 1) % 4 == 4:
+                    fname = i_hex + "_" + self.channel + ".spec.pkl"
+                else:
+                    bi = "{0:04b}".format(int(i_hex[-1], 16))[:(4 - (self.zoom - 1) % 4)]
+                    fname = i_hex[:-1] + "_" + bi + "_" + self.channel + ".spec.pkl"
+                if fname in self.files:
+                    i_file = fname
+                else:
+                    ftp.cwd(input_dir + i_dir)
+                    files = ftp.nlst()
+                    for f in files:
+                        if f == fname:
+                            i_file = f
+                            break
             except ftplib.error_perm:
                 pass
             if i_file is not None:
                 print (i_file)
-                r = StringIO()
-                ftp.retrbinary('RETR ' + self.input_dir + i_dir + i_file, r.write)
-                data = pickle.loads(r.getvalue())
-                r.close()
+                if i_file not in self.files:
+                    r = StringIO()
+                    ftp.retrbinary('RETR ' + self.input_dir + i_dir + i_file, r.write)
+                    data = pickle.loads(r.getvalue())
+                    r.close()
+                    self.files[i_file] = data
+                else:
+                    data = self.files[i_file]
                 if combined_spec is None:
                     combined_spec = data[0]
                 else:
@@ -164,13 +201,15 @@ class BeeApp(tk.Tk):
                 else:
                     combined_spec = np.vstack((combined_spec, [0] * 2049))
         hex_time1 = '{:08x}'.format(int(num))
-        hex_time2 = '{:08x}'.format(int(num + 2**(3 + self.zoom) - 1))
+        hex_time2 = '{:08x}'.format(int(num + 2 ** (3 + self.zoom) - 1))
         self.leftmost = make_hex8(hex_time1)
         self.create_fig(combined_spec, hex_time1, hex_time2)
 
     def create_fig(self, combined_spec, hex_time1, hex_time2):
         date1, file_time1 = Dates.to_date(hex_time1)
+        date1, file_time1 = Dates.convert_to_local(date1, file_time1)
         date2, file_time2 = Dates.to_date(hex_time2)
+        date2, file_time2 = Dates.convert_to_local(date2, file_time2)
         if not date1 == date2:
             title = date1 + "  -  " + date2
         else:
@@ -187,7 +226,9 @@ class BeeApp(tk.Tk):
             ax.set_title(title)
             labels = [item.get_text() for item in ax.get_xticklabels()]
             labels[0] = file_time1
-            labels[8] = Dates.to_date(self.center)[1]
+            center_date, center_time = Dates.to_date(self.center)
+            center_date, center_time = Dates.convert_to_local(center_date, center_time)
+            labels[8] = center_time
             labels[len(labels) - 1] = file_time2
             ax.set_xticklabels(labels)
             cax.set_clim(self.cax.get_clim())
@@ -203,7 +244,10 @@ class BeeApp(tk.Tk):
             self.ax.set_title(title)
             labels = [item.get_text() for item in self.ax.get_xticklabels()]
             labels[0] = file_time1
-            labels[8] = Dates.to_date(self.center)[1]
+            center_date, center_time = Dates.to_date(self.center)
+            center_date, center_time = Dates.convert_to_local(center_date, center_time)
+            labels[8] = center_time
+            labels[len(labels) - 1] = file_time2
             labels[len(labels) - 1] = file_time2
             self.ax.set_xticklabels(labels)
             cax.set_clim(self.cax.get_clim())
@@ -245,6 +289,14 @@ def on_closing():
     app.destroy()
     plt.close()
 
-app = BeeApp()
+
+root = Tk.Tk()
+root.withdraw()
+d = DateDialog(root)
+date, time = d.result
+date, time = Dates.convert_to_utc(date, time)
+root.destroy()
+
+app = BeeApp(date, time)
 app.protocol("WM_DELETE_WINDOW", on_closing)
 app.mainloop()

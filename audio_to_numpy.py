@@ -83,11 +83,8 @@ def save_specgram_pkl(data, date, file_time, recording, output_dir, show=False):
             intensities = specgram[:, specgram.shape[1] - 1]
         else:
             intensities = specgram[:, i]	
-        data = {}
-        data["intensities"] = intensities.tolist()
-        data["sample_rate"] = sample_rate
-        data["start_datetime"] = start_datetime
-        data["end_datetime"] = end_datetime
+        data = {"intensities": intensities.astype(np.float32).tolist(), "sample_rate": sample_rate,
+                "start_datetime": start_datetime, "end_datetime": end_datetime}
         if not os.path.isfile(output):
             np.save(output, data)
         plt.clf()
