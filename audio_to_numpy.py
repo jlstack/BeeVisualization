@@ -30,6 +30,7 @@ def get_data(path):
             sound = AudioSegment.from_file(path, "mp3")
             sound.export(temp.name, format="wav")
         bee_rate, bee_data = read(temp.name)
+        os.remove(temp.name)
     data_type = np.iinfo(bee_data.dtype)
     dmin = data_type.min
     dmax = data_type.max
@@ -126,8 +127,8 @@ def main(input_dir, output_dir):
                         try:
                             (bee_rate, bee_data) = get_data(audio_dir + rec)
                             save_specgram_pkl(bee_data, date, file_time, rec, output_dir)
-                        except ValueError:
-                            print ("Value Error thrown when file was read")
+                        except:
+                            print ("Error thrown when file was read")
 
 if __name__ == "__main__":
     import sys
