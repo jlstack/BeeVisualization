@@ -251,8 +251,7 @@ def NMF_plotW(path, dims = 2):
              ax = fig.add_subplot(dims, dims, pos)
              pos += 1
              if x != y:
-                 #Plot data
-                 #For 2D histogram
+                 #Plot data for 2D histogram
                  a, b, c = np.histogram2d(components[:,x], components[:,y], bins = 40)
                  a = np.flipud(np.rot90(a))
                  mesh = plt.pcolormesh(b,c,np.ma.masked_where(a == 0, a))
@@ -290,7 +289,7 @@ def NMF_plotH(path, dims = 2):
         print("Loading dimension " + str(x + 1) + ".")
         ax = fig.add_subplot(dims/factors[int(len(factors)/2) - 1], dims/factors[int(len(factors) / 2)], pos)
         pos += 1
-        #Plot data
+        #Plot density plots
         den = stats.kde.gaussian_kde(components[:,x])
         lin = np.linspace(0, int(np.max(components[:,x])), 200)
         plt.plot(lin, den(lin))
