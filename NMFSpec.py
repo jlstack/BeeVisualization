@@ -180,7 +180,7 @@ Visualize the components of the factorized matrix in 3D space.
 
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
 '''
-def NMF_vis3d(path):
+def NMF_plot3d(path):
     t0 = time()
     #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
@@ -198,13 +198,13 @@ def NMF_vis3d(path):
     plt.close()
 
 '''
-Visualize the components of the factorized matrix in 3D space.
+Visualize the components of the factorized matrix in 2D space.
 
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
 
 The dims parameter is the number of dimensions to visualize.
 '''
-def NMF_vis2d(path, dims = 2):
+def NMF_plot2d(path, dims = 2):
     t0 = time()
     #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
@@ -271,7 +271,7 @@ def NMF_plotW(path, dims = 2):
      plt.close()
 
 '''
-Visualize the H matrix of the NMF in 2D space.
+Visualize the H matrix of the NMF using a density plot.
 
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
 
@@ -293,6 +293,8 @@ def NMF_plotH(path, dims = 2):
         pos += 1
         #Plot density plots
         den = stats.kde.gaussian_kde(components[:,x])
+        den.covariance_factor = lambda : .25
+        den._compute_covariance()
         lin = np.linspace(0, int(np.max(components[:,x])), 200)
         plt.plot(lin, den(lin))
         #Set the axis to scientific notation
