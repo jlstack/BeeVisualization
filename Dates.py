@@ -101,3 +101,24 @@ def get_current_date():
     curr_time = curr_time[:curr_time.rfind('.')]
     curr_date = str(now.date())
     return curr_date, curr_time
+
+
+def time_diff(date1, file_time1, date2, file_time2):
+    """
+    Finds the total number of seconds between two date/times
+    :param date1: a specified date(YYYY-MM-DD)
+    :param file_time1: a specified time(HH:MM:SS)
+    :param date2: a specified date(YYYY-MM-DD)
+    :param file_time2: a specified time(HH:MM:SS)
+    :return: total number of seconds between two times
+    """
+    date1 = date1.split("-")
+    file_time1 = file_time1.split(":")
+    d1 = datetime(year=int(date1[0]), month=int(date1[1]), day=int(date1[2]),
+                  hour=int(file_time1[0]), minute=int(file_time1[1]), second=int(file_time1[2]), tzinfo=tz.tzlocal())
+    date2 = date2.split("-")
+    file_time2 = file_time2.split(":")
+    d2 = datetime(year=int(date2[0]), month=int(date2[1]), day=int(date2[2]),
+                  hour=int(file_time2[0]), minute=int(file_time2[1]), second=int(file_time2[2]), tzinfo=tz.tzlocal())
+    diff = d2 - d1
+    return int(diff.total_seconds())
