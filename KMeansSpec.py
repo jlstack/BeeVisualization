@@ -10,6 +10,8 @@ and farthest tuples of points in the same cluster, and displays how
 many points are in each cluster.
 """
 
+author__ = "Chris Smith"
+
 import sys
 from scipy.io.wavfile import read as read_wav
 from sklearn import cluster
