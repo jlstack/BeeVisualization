@@ -68,7 +68,7 @@ def to_pickle(input_dir):
 
 
 def get_start_and_stop():
-    start, start_dir = Dates.to_hex('2015-04-14', '00:00:00')
+    start, start_dir = Dates.to_hex('2015-03-01', '00:00:00')
     start = int(start, 16)
     now = datetime.now()
     curr_time = str(now.time())
