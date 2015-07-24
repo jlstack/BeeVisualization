@@ -7,12 +7,15 @@ and farthest tuples of points in the same cluster, and displays how
 many points are in each cluster.
 """
 
+__author__ = "Chris Smith"
+
 import sys
 from scipy.io.wavfile import read as read_wav
 from sklearn import decomposition
 import numpy as np
 import wave
 from scipy import signal
+from scipy import stats
 from matplotlib import pyplot as plt
 import os
 from time import time
@@ -177,7 +180,7 @@ Visualize the components of the factorized matrix in 3D space.
 
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
 '''
-def NMF_vis3d(path):
+def NMF_plot3d(path):
     t0 = time()
     #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
@@ -189,18 +192,19 @@ def NMF_vis3d(path):
     #Set the axis to scientific notation
     ax.xaxis.get_major_formatter().set_powerlimits((0,1))
     ax.yaxis.get_major_formatter().set_powerlimits((0,1))
+    fig.suptitle("3D Visualization of Data")
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
     plt.close()
 
 '''
-Visualize the components of the factorized matrix in 3D space.
+Visualize the components of the factorized matrix in 2D space.
 
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
 
 The dims parameter is the number of dimensions to visualize.
 '''
-def NMF_vis2d(path, dims = 2):
+def NMF_plot2d(path, dims = 2):
     t0 = time()
     #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
@@ -222,10 +226,84 @@ def NMF_vis2d(path, dims = 2):
             #Set the axis to scientific notation
             ax.xaxis.get_major_formatter().set_powerlimits((0,1))
             ax.yaxis.get_major_formatter().set_powerlimits((0,1))
+    fig.suptitle("2D Visualization of Data")
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
     plt.close()
 
+'''
+Visualize the W matrix using 2D histograms.
+
+The path parameter is the path to the NMFdata_xx.pkl file to visualize.
+
+The dims parameter is the number of dimensions to visualize.
+'''
+def NMF_plotW(path, dims = 2):
+     t0 = time()
+     #Load the multiplied matrix
+     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
+     components = pickledData[2]
+     fig = plt.figure()
+     pos = 1
+     dims = int(dims)
+     #Plot the number of dimensions, from dim 1 to provided parameter.
+     for y in range(dims):
+         print("Loading dimension " + str(y + 1) + ".")
+         for x in range(dims):
+             ax = fig.add_subplot(dims, dims, pos)
+             pos += 1
+             if x != y:
+                 #Plot data for 2D histogram
+                 a, b, c = np.histogram2d(components[:,x], components[:,y], bins = 40)
+                 a = np.flipud(np.rot90(a))
+                 mesh = plt.pcolormesh(b,c,np.ma.masked_where(a == 0, a))
+             else:
+                 plt.hist(components[:,x], bins = 50)
+             #Set the axis to scientific notation
+             ax.xaxis.get_major_formatter().set_powerlimits((0,1))
+             ax.yaxis.get_major_formatter().set_powerlimits((0,1))
+     print("Time to graph items: " + str(time() - t0) + " sec.")
+     fig.subplots_adjust(right = 0.8)
+     fig.suptitle("2D Histograms of W")
+     cax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+     fig.colorbar(mesh, cax = cax)
+     plt.show()
+     plt.close()
+
+'''
+Visualize the H matrix of the NMF using a density plot.
+
+The path parameter is the path to the NMFdata_xx.pkl file to visualize.
+
+The dims parameter is the number of dimensions to visualize.
+'''
+def NMF_plotH(path, dims = 2):
+    t0 = time()
+    #Load the multiplied matrix
+    pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
+    components = pickledData[3]
+    fig = plt.figure()
+    pos = 1
+    dims = int(dims)
+    factors = [num for num in range(1, int(dims / 2) + 1) if not dims % num] + [dims]
+    #Plot the number of dimensions, from dim 1 to provided parameter.
+    for x in range(dims):
+        print("Loading dimension " + str(x + 1) + ".")
+        ax = fig.add_subplot(dims/factors[int(len(factors)/2) - 1], dims/factors[int(len(factors) / 2)], pos)
+        pos += 1
+        #Plot density plots
+        den = stats.kde.gaussian_kde(components[:,x])
+        den.covariance_factor = lambda : .25
+        den._compute_covariance()
+        lin = np.linspace(0, int(np.max(components[:,x])), 200)
+        plt.plot(lin, den(lin))
+        #Set the axis to scientific notation
+        ax.xaxis.get_major_formatter().set_powerlimits((0,1))
+        ax.yaxis.get_major_formatter().set_powerlimits((0,1))
+    fig.suptitle("Density Plots of H")
+    print("Time to graph items: " + str(time() - t0) + " sec.")
+    plt.show()
+    plt.close()
 
 
 '''

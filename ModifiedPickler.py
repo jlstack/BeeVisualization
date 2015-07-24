@@ -81,7 +81,7 @@ def save_specgram_pkl(data, date, file_time, recording, output_dir, pit, show=Fa
             spectrum = specgram[:, i]
         if not os.path.isfile(output):
             with open(output, 'wb') as outfile:
-                pickle.dump((spectrum.astype(np.float32), freqs.astype(np.float32), time.astype(np.float32)), outfile)
+                pickle.dump((spectrum.astype(np.float32), freqs.astype(np.float32), time.astype(np.float32)), outfile, protocol=2)
             plt.close()
 
 
@@ -92,35 +92,38 @@ def main(input_dir, output_dir):
         output_dir += "/"
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
-    recordings = os.listdir(input_dir)
-    recordings.sort()
-    for rec in recordings:
-        if rec.endswith(".wav") or rec.endswith(".flac") or rec.endswith(".mp3"):
-            print (input_dir + rec)
-            rec_split = rec.split("_")
-            date = rec_split[1]
-            date = date.split("-")
-            date.reverse()
-            date = "-".join(date)
-            if "Org" in date:
-                index = date.index("Org")
-                date = date[:index] + date[index + 3:]
-            file_time = rec_split[2]
-            file_time = file_time.split("-")
-            file_time = ":".join(file_time)
-            converted_date, converted_file_time = Dates.convert_to_utc(date, file_time)
-            temp_date, temp_time = Dates.add_seconds_to_date(converted_date, converted_file_time, 30)
-            hex_num, hex_dir = Dates.to_hex(temp_date, temp_time)
-            if "left" in rec:
-                output = output_dir + rec_split[0] + "/" + hex_dir + hex_num + "_" + temp_date + "T" + temp_time + "Z_left.spec.pkl"
-            else:
-                output = output_dir + rec_split[0] + "/" + hex_dir + hex_num + "_" + temp_date + "T" + temp_time + "Z_right.spec.pkl"
-            if not os.path.isfile(output):
-                try:
-                    (bee_rate, bee_data) = get_data(input_dir + rec)
-                    save_specgram_pkl(bee_data, converted_date, converted_file_time, rec, output_dir, rec_split[0])
-                except ValueError:
-                    print ("Value Error thrown when file was read")
+    for d in os.listdir(input_dir):
+        print d
+        recordings = os.listdir(input_dir + d)
+        recordings.sort()
+        for rec in recordings:
+            if rec.endswith(".wav") or rec.endswith(".flac") or rec.endswith(".mp3"):
+                print (input_dir + d + "/" + rec)
+                date = d.split("-")
+                date.reverse()
+                date = "-".join(date)
+                if "Org" in date:
+                    index = date.index("Org")
+                    date = date[:index] + date[index + 3:]
+                file_time = rec.split("-")
+                file_time = ":".join(file_time[:3])
+                converted_date, converted_file_time = Dates.convert_to_utc(date, file_time)
+                temp_date, temp_time = Dates.add_seconds_to_date(converted_date, converted_file_time, 30)
+                hex_num, hex_dir = Dates.to_hex(temp_date, temp_time)
+                if "pit1" in input_dir:
+                    pit = "pit1"
+                else:
+                    pit = "pit2"
+                if "left" in rec:
+                    output = output_dir + pit + "/" + hex_dir + hex_num + "_" + temp_date + "T" + temp_time + "Z_left.spec.pkl"
+                else:
+                    output = output_dir + pit + "/" + hex_dir + hex_num + "_" + temp_date + "T" + temp_time + "Z_right.spec.pkl"
+                if not os.path.isfile(output):
+                    try:
+                        (bee_rate, bee_data) = get_data(input_dir + d + "/" + rec)
+                        save_specgram_pkl(bee_data, converted_date, converted_file_time, rec, output_dir, pit)
+                    except ValueError:
+                        print ("Value Error thrown when file was read")
 
 
 if __name__ == "__main__":

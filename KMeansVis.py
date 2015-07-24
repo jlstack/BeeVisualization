@@ -12,6 +12,8 @@ from pyplot.
 
 """
 
+__author__ = "Chris Smith"
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm

@@ -23,6 +23,7 @@ def get_data(path):
         bee_rate, bee_data = read(path)
     else:
         temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        temp.close()
         if path.endswith(".flac"):
             sound = AudioSegment.from_file(path, "flac")
             sound.export(temp.name, format="wav")
@@ -30,7 +31,7 @@ def get_data(path):
             sound = AudioSegment.from_file(path, "mp3")
             sound.export(temp.name, format="wav")
         bee_rate, bee_data = read(temp.name)
-        temp.close()
+        os.remove(temp.name)
     data_type = np.iinfo(bee_data.dtype)
     dmin = data_type.min
     dmax = data_type.max
@@ -121,9 +122,8 @@ def main(input_dir, output_dir):
                         try:
                             (bee_rate, bee_data) = get_data(audio_dir + rec)
                             save_specgram_pkl(bee_data, converted_date, converted_file_time, rec, output_dir)
-                        except ValueError:
-                            print ("Value Error thrown when file was read")
-
+                        except:
+                            print ("Error thrown when file was read")
 if __name__ == "__main__":
     import sys
-    main("/Users/lukestack/PycharmProjects/BeeVisualization", "/Users/lukestack/PycharmProjects/BeeVisualization/Pickles")
+    main(sys.argv[1], sys.argv[2])
