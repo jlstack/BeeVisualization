@@ -14,6 +14,7 @@ import tempfile
 import thread
 import pyaudio
 import os
+import math
 import numpy as np
 
 user = 'stackjl'
@@ -31,12 +32,10 @@ class DateDialog(tkSimpleDialog.Dialog):
         self.withdraw()
         Tk.Label(master, text="Date:").grid(row=0)
         Tk.Label(master, text="Time:").grid(row=1)
-
         self.date = Tk.Entry(master)
         self.time = Tk.Entry(master)
-        self.date.insert(0, "2015-04-15")
-        self.time.insert(0, "17:03:54")
-
+        self.date.insert(0, "2015-07-21")
+        self.time.insert(0, "18:16:30")
         self.date.grid(row=0, column=1)
         self.time.grid(row=1, column=1)
         return self.date  # initial focus
@@ -61,7 +60,8 @@ class BeeApp(Tk.Tk):
         self.center = format(int(self.leftmost, 16) + 8, 'x')
         self.zoom = 1
         self.files = {}
-        self.cax = self.fig = self.ax = self.stream = None
+        self.cax = self.fig = self.ax = self.stream = self.combined_spec = None
+        self.current_view = "spec"
         self.get_next_16(self.center)
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
@@ -85,6 +85,9 @@ class BeeApp(Tk.Tk):
         self.play = Tk.Button(self, text="Play", command=self.on_play)
         self.play.pack(side=Tk.LEFT, expand=Tk.YES)
 
+        self.plot = Tk.Button(self, text="Plot Frequencies", command=self.on_plot)
+        self.plot.pack(side=Tk.LEFT, expand=Tk.YES)
+
         self.right = Tk.Button(self, text=">", command=self.on_right)
         self.right.pack(side=Tk.RIGHT)
 
@@ -99,6 +102,22 @@ class BeeApp(Tk.Tk):
     def on_zoom_in(self):
         if self.zoom != 1:
             self.zoom -= 1
+            self.get_next_16(self.center)
+
+    def on_plot(self):
+        if self.current_view == "spec":
+            self.combined_spec[~np.all(self.combined_spec == 0, axis=1)]
+            self.ax.clear()
+            freqs = np.arange(0, self.combined_spec.shape[1] / 2.0, .5)
+            if not math.isnan(np.mean(self.combined_spec[~np.all(self.combined_spec == 0, axis=1)].T)):
+                self.ax.set_ylim((0, np.amax(self.combined_spec[~np.all(self.combined_spec == 0, axis=1)].T[2:, :])))
+                self.ax.plot(freqs, np.mean(self.combined_spec[~np.all(self.combined_spec == 0, axis=1)].T, axis=1))
+            else:
+                self.ax.plot(freqs, [0] * len(freqs))
+            self.canvas.draw()
+            self.plot.config(text="Spectragram")
+            self.current_view = "plot"
+        else:
             self.get_next_16(self.center)
 
     def on_play(self):
@@ -197,10 +216,14 @@ class BeeApp(Tk.Tk):
                     combined_spec = [0] * 2049
                 else:
                     combined_spec = np.vstack((combined_spec, [0] * 2049))
+        self.combined_spec = combined_spec
         hex_time1 = '{:08x}'.format(int(num))
         hex_time2 = '{:08x}'.format(int(num + 2 ** (3 + self.zoom) - 1))
         self.leftmost = make_hex8(hex_time1)
         self.create_fig(combined_spec, hex_time1, hex_time2)
+        if self.current_view != "spec":
+            self.plot.config(text="Frequencies")
+            self.current_view = "spec"
 
     def create_fig(self, combined_spec, hex_time1, hex_time2):
         date1, file_time1 = Dates.to_date(hex_time1)
@@ -214,10 +237,11 @@ class BeeApp(Tk.Tk):
             fig.canvas.draw()
             ax.set_xticks(np.arange(0, combined_spec.shape[0], 1.0))
             ax.set_xticklabels(["" for x in range(combined_spec.shape[0])])
-            if self.cax is None:
+            if self.cax is None and np.count_nonzero(combined_spec) != 0:
                 self.cax = ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
             cax = ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
-            ax.set_ylim((0, 1024))
+            # print ax.get_yticklabels()[0].get_label(), "here"
+            # ax.set_yticklabels([str(int(str(l)) / 2) for l in ax.get_yticklabels()])
             ax.set_title(title)
             labels = [item.get_text() for item in ax.get_xticklabels()]
             labels[0] = file_time1
@@ -225,16 +249,17 @@ class BeeApp(Tk.Tk):
             labels[8] = center_time
             labels[len(labels) - 1] = file_time2
             ax.set_xticklabels(labels)
-            cax.set_clim(self.cax.get_clim())
-            fig.colorbar(cax)
+            if self.cax is not None:
+                cax.set_clim(self.cax.get_clim())
+                fig.colorbar(cax)
             self.fig = fig
             self.ax = ax
         else:
             self.ax.clear()
             self.ax.set_xticks(np.arange(0, combined_spec.shape[0], 1.0))
             self.ax.set_xticklabels(["" for x in range(combined_spec.shape[0])])
+            # self.ax.set_yticklabels([str(int(l) / 2) for l in self.ax.get_yticklabels()])
             cax = self.ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
-            self.ax.set_ylim((0, 1024))
             self.ax.set_title(title)
             labels = [item.get_text() for item in self.ax.get_xticklabels()]
             labels[0] = file_time1
@@ -243,7 +268,11 @@ class BeeApp(Tk.Tk):
             labels[len(labels) - 1] = file_time2
             labels[len(labels) - 1] = file_time2
             self.ax.set_xticklabels(labels)
-            cax.set_clim(self.cax.get_clim())
+            if self.cax is None and np.count_nonzero(combined_spec) != 0:
+                self.cax = self.ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
+                self.fig.colorbar(cax)
+            if self.cax is not None:
+                cax.set_clim(self.cax.get_clim())
             self.canvas.draw()
 
 

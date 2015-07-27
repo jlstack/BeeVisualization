@@ -24,12 +24,18 @@ def other_levels(input_dir, hex_digits, binary_digits):
             if "left" in pic:
                 if binary_num not in spectrum["left"].keys():
                     with open(input_dir + pic, 'rb') as f:
-                        spec, freq, time = pickle.load(f)
+                        u = pickle._Unpickler(f)
+                        u.encoding = 'latin1'
+                        spec, freq, time = u.load()
+                        # data = pickle.load(f)
                     spectrum["left"][binary_num] = (spec, freq, time)
             else:
                 if binary_num not in spectrum["right"].keys():
                     with open(input_dir + pic, 'rb') as f:
-                        spec, freq, time = pickle.load(f)
+                        u = pickle._Unpickler(f)
+                        u.encoding = 'latin1'
+                        spec, freq, time = u.load()
+                        # data = pickle.load(f)
                     spectrum["right"][binary_num] = (spec, freq, time)
     if hex_num is not None:
         save_combined_pickles_other_levels(spectrum, hex_num, input_dir)
@@ -80,7 +86,10 @@ def lowest_level(input_dir, hex_digits):
                 if hex_num not in spectrum["left"].keys():
                     try:
                         with open(input_dir + pic, 'rb') as f:
-                            spec, freq, time = pickle.load(f)
+                            u = pickle._Unpickler(f)
+                            u.encoding = 'latin1'
+                            spec, freq, time = u.load()
+                            # data = pickle.load(f)
                         spectrum["left"][hex_num] = (spec, freq, None)
                     except EOFError:
                         spectrum["left"][hex_num] = (spec, freq, None)
@@ -88,7 +97,10 @@ def lowest_level(input_dir, hex_digits):
                 if hex_num not in spectrum["right"].keys():
                     try:
                         with open(input_dir + pic, 'rb') as f: 
-                            spec, freq, time = pickle.load(f)
+                            u = pickle._Unpickler(f)
+                            u.encoding = 'latin1'
+                            spec, freq, time = u.load()
+                            # data = pickle.load(f)
                         spectrum["right"][hex_num] = (spec, freq, None)
                     except EOFError:
                         spectrum["left"][hex_num] = (spec, freq, None)
@@ -155,7 +167,7 @@ def main(input_dir):
                 print (input_dir + '/'.join(hex_form.format(i)[:hd + 1]) + "/")
                 lowest_level(input_dir + '/'.join(hex_form.format(i)[:hd]) + "/", hd + 1)
                 for bd in range(3, 0, -1):
-                    other_levels(input_dir+ '/'.join(hex_form.format(i)[:hd]) + "/", hd, bd)
+                    other_levels(input_dir + '/'.join(hex_form.format(i)[:hd]) + "/", hd, bd)
             i += 1
 
 
