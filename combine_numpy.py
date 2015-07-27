@@ -158,7 +158,7 @@ def combine_data(data1, data2, file_name):
             combined_data["sample_rate"] = data1["sample_rate"]
         else:
             combined_data["sample_rate"] = None
-            np.save(file_name, combined_data)
+        np.save(file_name, combined_data)
     print file_name
 
 
