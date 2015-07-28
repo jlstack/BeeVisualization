@@ -193,15 +193,15 @@ def main(input_dir):
     stop_hex, stop_dir = Dates.to_hex(stop_date, stop_time)
     hex_num = '{:07x}'.format(i)
     for hd in range(7, 0, -1):
-        i = int(hex_num[:hd], 16)
-        stop = int(stop_hex[:hd], 16)
+        stop = int(hex_num[:hd], 16)
+        i = int(stop_hex[:hd], 16)
         hex_form = "{:0" + str(hd) + "x}"
-        while i <= stop:
+        while i >= stop:
             if os.path.isdir(input_dir + '/'.join(hex_form.format(i)[:hd]) + "/"):
                 lowest_level(input_dir + '/'.join(hex_form.format(i)[:hd]) + "/", hd + 1)
                 for bd in range(3, 0, -1):
                     other_levels(input_dir + '/'.join(hex_form.format(i)[:hd]) + "/", hd, bd)
-            i += 1
+            i -= 1
 
 
 if __name__ == "__main__":
