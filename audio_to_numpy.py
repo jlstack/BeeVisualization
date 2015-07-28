@@ -96,6 +96,7 @@ def main(input_dir, output_dir):
     if not output_dir.endswith("/"):
         output_dir += "/"
     if not os.path.isdir(output_dir):
+        print output_dir
         os.makedirs(output_dir)
     directories = os.listdir(input_dir)
     directories.sort()
@@ -130,4 +131,4 @@ def main(input_dir, output_dir):
 
 if __name__ == "__main__":
     import sys
-    main("/Users/lukestack/PycharmProjects/BeeVisualization", "/Users/lukestack/PycharmProjects/BeeVisualization/Seconds")
+    main(sys.argv[1], sys.argv[2])
