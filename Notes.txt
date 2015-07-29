@@ -1,0 +1,15 @@
+This site contains info on how to use ffmpeg through a subprocess in Python:
+http://stackoverflow.com/questions/25955322/subprocess-call-ffmpeg-command-line
+
+http://stackoverflow.com/questions/13243690/decibel-values-at-specific-points-in-wav-file
+
+http://en.wikipedia.org/wiki/Sound_pressure#Sound_pressure_level
+
+http://stackoverflow.com/questions/2788871/python-date-difference-in-minutes
+
+Saving interactive plot for pyplot:
+http://stackoverflow.com/questions/7290370/store-and-reload-matplotlib-pyplot-object
+
+What's New in PYthon 3!
+https://docs.python.org/3/whatsnew/3.0.html
+

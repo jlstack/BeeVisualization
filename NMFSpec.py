@@ -9,6 +9,8 @@ many points are in each cluster.
 
 __author__ = "Chris Smith"
 
+import matplotlib
+matplotlib.use("Agg")
 import sys
 from scipy.io.wavfile import read as read_wav
 from sklearn import decomposition
@@ -295,8 +297,10 @@ def NMF_plotH(path, dims = 2):
         den = stats.kde.gaussian_kde(components[:,x])
         den.covariance_factor = lambda : .25
         den._compute_covariance()
-        lin = np.linspace(0, int(np.max(components[:,x])), 200)
-        plt.plot(lin, den(lin))
+        #lin = np.linspace(0, int(np.max(components[:,x])), 200)
+        lin = range(0, len(components))
+        plt.plot(lin, components[:,x])
+        #plt.plot(lin, den(lin))
         #Set the axis to scientific notation
         ax.xaxis.get_major_formatter().set_powerlimits((0,1))
         ax.yaxis.get_major_formatter().set_powerlimits((0,1))
