@@ -18,13 +18,16 @@ import math
 import numpy as np
 
 user = 'stackjl'
-password = ''
+password = 'sta.44,ck'
 ftp = ftplib.FTP('cs.appstate.edu', user, password)
 pit = "pit2"
 channel = 'left'
 input_dir = "/usr/local/bee/beemon/beeW/Luke/numpy_specs2/%s/" % pit
 mp3_dirs = ["/usr/local/bee/beemon/mp3/" + pit + "/%s/", "/usr/local/bee/beemon/" + pit + "/%s/audio/"]
 temp_dir = "/Users/lukestack/PycharmProjects/BeeVisualization/"
+
+if not os.path.isdir(temp_dir):
+    os.mkdir(temp_dir)
 
 
 class DateDialog(tkSimpleDialog.Dialog):
@@ -59,7 +62,7 @@ class BeeApp(Tk.Tk):
         self.leftmost = make_hex8("".join(start_dir.split("/")))
         self.center = format(int(self.leftmost, 16) + 8, 'x')
         self.zoom = 1
-        self.files = {}
+        self.files = self.audio_files = {}
         self.cax = self.fig = self.ax = self.stream = self.combined_spec = None
         self.current_view = "spec"
         self.get_next_16(self.center)
@@ -121,39 +124,48 @@ class BeeApp(Tk.Tk):
             self.get_next_16(self.center)
 
     def on_play(self):
-        audio_dir = None
-        audio_file = None
-        for i in range(0, 60):
-            sec = int(self.center, 16)
-            sec -= i
-            sec = format(sec, 'x')
-            date, time = Dates.to_date(sec)
-            date = date.split('-')
-            date.reverse()
-            date = '-'.join(date)
-            for j in range(0, len(self.mp3_dirs)):
-                try:
-                    ftp.cwd(self.mp3_dirs[j] % date)
-                    files = ftp.nlst()
-                    if files is not None:
-                        for f in files:
-                            if time in f or '-'.join(time.split(':')) in f:
-                                audio_dir = self.mp3_dirs[j] % date
-                                audio_file = f
-                                break
-                except ftplib.error_perm:
-                    pass
+        global stop_playing
+        if self.play.config('text')[-1] == "Stop":
+            stop_playing = True
+        else:
+            stop_playing = False
+            audio_dir = None
+            audio_file = None
+            for i in range(0, 60):
+                sec = int(self.center, 16)
+                sec -= i
+                sec = format(sec, 'x')
+                date, time = Dates.to_date(sec)
+                date = date.split('-')
+                date.reverse()
+                date = '-'.join(date)
+                for j in range(0, len(self.mp3_dirs)):
+                    try:
+                        ftp.cwd(self.mp3_dirs[j] % date)
+                        files = ftp.nlst()
+                        if files is not None:
+                            for f in files:
+                                if time in f or '-'.join(time.split(':')) in f:
+                                    audio_dir = self.mp3_dirs[j] % date
+                                    audio_file = f
+                                    break
+                    except ftplib.error_perm:
+                        pass
+                if audio_file is not None:
+                    break
             if audio_file is not None:
-                break
-        if audio_file is not None:
-            print audio_dir + audio_file
-            filename, file_extension = os.path.splitext(audio_file)
-            temp = tempfile.NamedTemporaryFile(suffix=file_extension)
-            temp.close()
-            with open(temp.name, 'wb') as r:
-                ftp.retrbinary('RETR ' + audio_dir + audio_file, r.write)
-            rate, wav = get_data(temp.name)
-            thread.start_new_thread(play, (rate, wav))
+                print audio_dir + audio_file
+                if audio_file not in self.audio_files:
+                    filename, file_extension = os.path.splitext(audio_file)
+                    temp = tempfile.NamedTemporaryFile(suffix=file_extension)
+                    temp.close()
+                    with open(temp.name, 'wb') as r:
+                        ftp.retrbinary('RETR ' + audio_dir + audio_file, r.write)
+                    rate, wav = get_data(temp.name)
+                    self.audio_files[audio_file] = (rate, wav)
+                else:
+                    rate, wav = self.audio_files[audio_file]
+                thread.start_new_thread(player, (self.play, rate, wav))
 
     def on_right(self):
         cen = int(self.center, 16)
@@ -258,7 +270,6 @@ class BeeApp(Tk.Tk):
             self.ax.clear()
             self.ax.set_xticks(np.arange(0, combined_spec.shape[0], 1.0))
             self.ax.set_xticklabels(["" for x in range(combined_spec.shape[0])])
-            # self.ax.set_yticklabels([str(int(l) / 2) for l in self.ax.get_yticklabels()])
             cax = self.ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
             self.ax.set_title(title)
             labels = [item.get_text() for item in self.ax.get_xticklabels()]
@@ -298,12 +309,20 @@ def make_hex8(hex_num):
     return hex_num
 
 
-def play(rate, wav):
+def player(play_button, rate, wav):
+    play_button.config(text="Stop")
     p = pyaudio.PyAudio()
     stream = p.open(format=p.get_format_from_width(2), channels=1, rate=rate, output=True)
-    stream.write(wav.tostring())
+    stream.start_stream()
+    start = 0
+    end = 1024
+    while start < len(wav) and not stop_playing:
+        stream.write(wav[start:end].tostring())
+        start += 1024
+        end = start + 1024
     stream.close()
     p.terminate()
+    play_button.config(text="Play")
 
 
 def on_closing():
