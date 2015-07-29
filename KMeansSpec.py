@@ -30,6 +30,110 @@ import pickle
 import tempfile
 
 '''
+This method gets the data from the audio.  It does the correct transformations
+if the file is not a .wav file (i.e. a .mp3 or a .flac file).
+
+The path parameter is the directory that has the wav files.
+The date parameter is the day to get data from.
+The filedate parameter is the list of dates that are in the dataset.
+The filename parameter is the file's name.
+The index parameter is the index of the file in the list of files.
+'''
+def audiodata_getter(path, date, filedate, filename, index):
+    #Check to see if it's a wav file. If not, convert in a temp file.
+    splitname = os.path.splitext(filename)[0]
+    if os.path.splitext(filename)[1] != ".wav":
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        if os.path.splitext(filename)[1] == ".mp3":
+            if "mp3" in path and date is None:
+                sound = AudioSegment.from_file(path + filedate[index] + "/" + filename, "mp3")
+            else:
+                sound = AudioSegment.from_file(path + filename, "mp3")
+            sound.export(temp.name, format = "wav")
+        if os.path.splitext(filename)[1] == ".flac":
+            if "mp3" in path and date is None:
+                sound = AudioSegment.from_file(path + filedate[index] + "/" + filename, "flac")
+            else:
+                sound = AudioSegment.from_file(path + filename, "flac")
+            sound.export(temp.name, format = "flac")
+        try:
+            wav = wave.open(temp, 'r')
+            return wav
+        except:
+            print(filename + " corrupted or not audio file.")
+    else:
+        try:
+            #Open the .wav file and get the vital information
+            wav = wave.open(path + "/audio/" + filename, 'r')
+            return wav
+        except:
+            print(filename + " corrupted or not audio file.")
+
+'''
+This function looks on the path provided for data from
+the date given pertaining to the pit that is passed in.
+
+The path parameter is the directory that has the wav files.
+The pit parameter is the pit to choose from.
+The day parameter is the day to get data from.
+The limit parameter is the number of files to include.
+'''
+def audiolist_getter(path, pit, date=None, limit=None):
+    dates = []
+    #If using the mp3 structure
+    if path == "/usr/local/bee/beemon/mp3/":
+        if date is not None:
+            path = path + pit + "/" + date + "/"
+            audiofiles = os.listdir(path)
+        else:
+            path = path + pit + "/"
+            audiofiles = []
+            for dir in os.listdir(path):
+                for d in os.listdir(path + dir):
+                    audiofiles.append(d)
+                    dates.append(dir)
+                if limit is not None and int(limit) <= len(audiofiles):
+                    break
+        parsefiles = []
+        #Make sure the limit is set
+        if limit is None:
+            limit = len(audiofiles)
+        limit = int(limit)
+        limited = 0
+        for rec in audiofiles:
+            name = os.path.splitext(rec)[1]
+            if name == ".wav" or name == ".mp3" or name == ".flac":
+                parsefiles.append(rec)
+                limited += 1
+                if len(parsefiles) == limit:
+                    break
+    #If not using the mp3 structure
+    else:
+        if date is not None:
+            path = path + pit + "/" + date
+            audiofiles= os.listdir(path + "/audio/")
+        else:
+            path = path + pit + "/"
+            audiofiles = []
+            for dir in os.listdir(path):
+                audiofiles.append(os.listdir(path + dir))
+                if limit is not None and int(limit) <= len(audiofiles):
+                    break
+        parsefiles = []
+        if limit is None:
+            limit = len(audiofiles)
+        limit = int(limit)
+        limited = 0
+        for rec in audiofiles:
+            parsefiles.append(rec)
+            limited += 1
+            if limit == len(parsefiles):
+                break
+    return dates, parsefiles, limited, path
+
+
+
+'''
 This function opens the connection & gets the files to be clustered.
 Then, it performs KMeans clustering on the periodograms
 of the wav file specgrams.
@@ -59,52 +163,7 @@ def KMeans_dir(path, pit, date=None, n=None, limit=None):
         os.makedirs(save_dir + "Left/")
     if not os.path.isdir(save_dir + "Right/"):
         os.makedirs(save_dir + "Right/")
-    if path == "/usr/local/bee/beemon/mp3/":
-        if date is not None:
-            path = path + pit + "/" + date + "/"
-            audiofiles = os.listdir(path)
-        else:
-            path = path + pit + "/"
-            audiofiles = []
-            for dir in os.listdir(path):
-                for d in os.listdir(path + dir):
-                    audiofiles.append(d)
-                    dates.append(dir)
-                if limit is not None and limit <= len(audiofiles):
-                    break
-        parsefiles = []
-        #Make sure the limit is set
-        if limit is None:
-            limit = len(audiofiles)
-        limited = 0
-        for rec in audiofiles:
-            name = os.path.splitext(rec)[1]
-            if name == ".wav" or name == ".mp3" or name == ".flac":
-                parsefiles.append(rec)
-                limited += 1
-                if len(parsefiles) == limit:
-                    break
-    else:
-        if date is not None:
-            path = path + pit + "/" + date
-            audiofiles= os.listdir(path + "/audio/")
-        else:
-            path = path + pit + "/"
-            audiofiles = []
-            for dir in os.listdir(path):
-                audiofiles.append(os.listdir(path + dir))
-                if limit is not None and limit <= len(audiofiles):
-                    break
-        parsefiles = []
-        if limit is None:
-            limit = len(audiofiles)
-        limited = 0
-        for rec in audiofiles:
-            parsefiles.append(rec)
-            limited += 1
-            if limit == len(parsefiles):
-                break
-    limit = limited
+    dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
     print("Files to parse: " + str(limit))
     #Get the recordings and parse them for clustering
     for recording in range(len(parsefiles)):
@@ -112,19 +171,10 @@ def KMeans_dir(path, pit, date=None, n=None, limit=None):
             print(str(count) + " out of " + str(limit) + " audio files read!")
         if count >= limit:
             break
-        filename = os.path.splitext(parsefiles[recording])[0]
-        if os.path.splitext(parsefiles[recording])[1] != ".wav":
-            temp = tempfile.NamedTemporaryFile(suffix=".wav")
-            if os.path.splitext(parsefiles[recording])[1] == ".mp3":
-                sound = AudioSegment.from_file(path + dates[recording] + "/" + parsefiles[recording], "mp3")
-                sound.export(temp.name, format = "wav")
-            if os.path.splitext(parsefiles[recording])[1] == ".flac":
-                sound = AudioSegment.from_file(path + dates[recording] + "/" + recording, "flac")
-                sound.export(temp.name, format = "flac")
-            wav = wave.open(temp, 'r')
-        else:
-            #Open the .wav file and get the vital information
-            wav = wave.open(path + "/audio/" + parsefiles[recording], 'r')
+        try:
+            wav = audiodata_getter(path, date, dates, parsefiles[recording], recording)
+        except:
+            continue
         frames = wav.readframes(-1)
         sig = np.fromstring(frames, "Int16")
         #Decimate the wav signal for parsing
