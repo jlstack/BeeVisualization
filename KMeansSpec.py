@@ -17,14 +17,11 @@ from scipy.io.wavfile import read as read_wav
 from sklearn import cluster
 import numpy as np
 import wave
-from scipy.spatial import distance as d
-import sklearn.preprocessing as p
 from scipy import signal
 from matplotlib import pyplot as plt
 import os
 from time import time
 from collections import Counter
-from sklearn import metrics
 from pydub import AudioSegment
 import pickle
 import tempfile
@@ -226,7 +223,6 @@ Used to run through command prompt instead of python console.
 '''
 if __name__ == "__main__":
     passed = True
-    import sys
     if len(sys.argv) == 2:
         KMeans_dir(sys.argv[1])
     elif len(sys.argv) == 3:

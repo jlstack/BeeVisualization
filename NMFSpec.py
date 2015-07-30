@@ -341,7 +341,6 @@ Used to run through command prompt instead of python console.
 '''
 if __name__ == "__main__":
     passed = True
-    import sys
     if len(sys.argv) == 3:
         NMF_dir(sys.argv[1], sys.argv[2])
     elif len(sys.argv) == 4:
@@ -355,7 +354,7 @@ if __name__ == "__main__":
         print("Called with wrong number of parameters.")
         print("First parameter is the path to the files (REQUIRED)")
         print("Second parameter is the pit to analyze (REQUIRED)")
-        print("Second parameter is the date to analyze (OPTIONAL)")
-        print("Third parameter is the number of files desired (OPTIONAL)")
+        print("Third parameter is the date to analyze (OPTIONAL)")
+        print("Fourth parameter is the number of files desired (OPTIONAL)")
 
 
