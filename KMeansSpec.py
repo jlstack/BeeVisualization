@@ -144,7 +144,7 @@ The day parameter is the day to get data from.
 The n parameter is the number of clusters.
 The limit parameter is the number of files to include.
 '''
-def KMeans_dir(path, pit, date=None, n=None, limit=None):
+def KMeans_dir(path, pit, date=None, n=10, limit=None):
     t0 = time()
     #Set seed for consistent cluster center initialization
     np.random.seed(327)
@@ -198,9 +198,6 @@ def KMeans_dir(path, pit, date=None, n=None, limit=None):
             data.append(pxx[:,index])
     print("Number of periodograms: " + str(len(data)))
     #Make sure the number of clusters is set
-    if n is None:
-        n = 10
-    n = int(n)
     #Actually do the KMeans clustering
     t2 = time()
     print("Data gathering complete. Initializing KMeans...")
