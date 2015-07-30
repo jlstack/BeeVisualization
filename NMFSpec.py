@@ -8,8 +8,6 @@ functions that enable the user to plot the results of the NMF.
 
 __author__ = "Chris Smith"
 
-import matplotlib
-matplotlib.use("Agg")
 import sys
 from scipy.io.wavfile import read as read_wav
 from sklearn import decomposition
