@@ -189,7 +189,7 @@ def NMF_dir(path, pit, date=None, limit=None):
     #Actually do the NMF computation
     t2 = time()
     print("Data gathering complete. Doing nonnegative matrix factorization.")
-    estimator = decomposition.NMF(init = 'nndsvdar', max_iter=10000, random_state = 327)
+    estimator = decomposition.NMF(init = 'nndsvd', max_iter=10000, random_state = 327)
     print("Fitting the model to your data...")
     print("This may take some time...")
     w = estimator.fit_transform(data)
