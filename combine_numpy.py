@@ -84,14 +84,14 @@ def lowest_level(input_dir, hex_digits):
                         try:
                             data = np.load(input_dir + nf).item()
                             spectrum["left"][hex_num] = data
-                        except EOFError:
+                        except IOError or EOFError:
                             spectrum["left"][hex_num] = None
                 else:
                     if hex_num not in spectrum["right"].keys():
                         try:
                             data = np.load(input_dir + nf).item()
                             spectrum["right"][hex_num] = data
-                        except EOFError:
+                        except IOError or EOFError:
                             spectrum["left"][hex_num] = None
     save_combined_lowest_level(spectrum, input_dir)
 

@@ -1,10 +1,9 @@
 """
 NMFSpec.py
 
-The NMF_dir function is used to get the audio files
-and perform nonnegative matrix factorization on them.  it then displays the closest
-and farthest tuples of points in the same cluster, and displays how
-many points are in each cluster.
+This file contains functions to get the audio files
+and perform nonnegative matrix factorization on them.  It also contains
+functions that enable the user to plot the results of the NMF.
 """
 
 __author__ = "Chris Smith"
@@ -24,33 +23,17 @@ import pickle
 import tempfile
 from mpl_toolkits.mplot3d import Axes3D
 
-
 '''
-This file contains functions to get the files to be factorized, and
-then does it on the periodograms of the wav file specgrams.
+This function looks on the path provided for data from
+the date given pertaining to the pit that is passed in.
 
 The path parameter is the directory that has the wav files.
 The pit parameter is the pit to choose from.
 The day parameter is the day to get data from.
 The limit parameter is the number of files to include.
 '''
-def NMF_dir(path, pit, date=None, limit=None):
-    t0 = time()
-    #Get the current directory for data storage, as well as getting the audio path based on input
-    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
-    data = []
+def audiolist_getter(path, pit, date=None, limit=None):
     dates = []
-    count = 0
-    print("Reading audio files...")
-    #Make sure the storage directories are there
-    if not os.path.isdir("usr/local/bee/beemon/beeW/Chris/" + pit):
-        os.makedirs("usr/local/bee/beemon/beeW/Chris/" + pit)
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-    if not os.path.isdir(save_dir + "Left/"):
-        os.makedirs(save_dir + "Left/")
-    if not os.path.isdir(save_dir + "Right/"):
-        os.makedirs(save_dir + "Right/")
     #If using the mp3 structure
     if path == "/usr/local/bee/beemon/mp3/":
         if date is not None:
@@ -100,7 +83,76 @@ def NMF_dir(path, pit, date=None, limit=None):
             limited += 1
             if limit == len(parsefiles):
                 break
-    limit = limited
+    return dates, parsefiles, limited, path
+
+'''
+This method gets the data from the audio.  It does the correct transformations
+if the file is not a .wav file (i.e. a .mp3 or a .flac file).
+
+The path parameter is the directory that has the wav files.
+The date parameter is the day to get data from.
+The filedate parameter is the list of dates that are in the dataset.
+The filename parameter is the file's name.
+The index parameter is the index of the file in the list of files.
+'''
+def audiodata_getter(path, date, filedate, filename, index):
+    #Check to see if it's a wav file. If not, convert in a temp file.
+    splitname = os.path.splitext(filename)[0]
+    if os.path.splitext(filename)[1] != ".wav":
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        if os.path.splitext(filename)[1] == ".mp3":
+            if "mp3" in path and date is None:
+                sound = AudioSegment.from_file(path + filedate[index] + "/" + filename, "mp3")
+            else:
+                sound = AudioSegment.from_file(path + filename, "mp3")
+            sound.export(temp.name, format = "wav")
+        if os.path.splitext(filename)[1] == ".flac":
+            if "mp3" in path and date is None:
+                sound = AudioSegment.from_file(path + filedate[index] + "/" + filename, "flac")
+            else:
+                sound = AudioSegment.from_file(path + filename, "flac")
+            sound.export(temp.name, format = "flac")
+        try:
+            wav = wave.open(temp, 'r')
+            return wav
+        except:
+            print(filename + " corrupted or not audio file.")
+    else:
+        try:
+            #Open the .wav file and get the vital information
+            wav = wave.open(path + "/audio/" + filename, 'r')
+            return wav
+        except:
+            print(filename + " corrupted or not audio file.")
+
+'''
+This function gets the files to be factorized, and
+then does nonnegative matrix factorization on the periodograms of the wav file specgrams.
+
+The path parameter is the directory that has the wav files.
+The pit parameter is the pit to choose from.
+The day parameter is the day to get data from.
+The limit parameter is the number of files to include.
+'''
+def NMF_dir(path, pit, date=None, limit=None):
+    t0 = time()
+    #Get the current directory for data storage, as well as getting the audio path based on input
+    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
+    dates = []
+    data = []
+    count = 0
+    print("Reading audio files...")
+    #Make sure the storage directories are there
+    if not os.path.isdir("usr/local/bee/beemon/beeW/Chris/" + pit):
+        os.makedirs("usr/local/bee/beemon/beeW/Chris/" + pit)
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+    if not os.path.isdir(save_dir + "Left/"):
+        os.makedirs(save_dir + "Left/")
+    if not os.path.isdir(save_dir + "Right/"):
+        os.makedirs(save_dir + "Right/")
+    dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
+
     print("Files to parse: " + str(limit))
     #Get the recordings and parse them for clustering
     for recording in range(len(parsefiles)):
@@ -108,34 +160,10 @@ def NMF_dir(path, pit, date=None, limit=None):
             print(str(count) + " out of " + str(limit) + " audio files read!")
         if count >= limit:
             break
-        #Check to see if it's a wav file. If not, convert in a temp file.
-        filename = os.path.splitext(parsefiles[recording])[0]
-        if os.path.splitext(parsefiles[recording])[1] != ".wav":
-            temp = tempfile.NamedTemporaryFile(suffix=".wav")
-            if os.path.splitext(parsefiles[recording])[1] == ".mp3":
-                if "mp3" in path and date is None:
-                    sound = AudioSegment.from_file(path + dates[recording] + "/" + parsefiles[recording], "mp3")
-                else:
-                    sound = AudioSegment.from_file(path + parsefiles[recording], "mp3")
-                sound.export(temp.name, format = "wav")
-            if os.path.splitext(parsefiles[recording])[1] == ".flac":
-                if "mp3" in path and date is None:
-                    sound = AudioSegment.from_file(path + dates[recording] + "/" + recording, "flac")
-                else:
-                    sound = AudioSegment.from_file(path + parsefiles[recording], "flac")
-                sound.export(temp.name, format = "flac")
-            try:
-                wav = wave.open(temp, 'r')
-            except:
-                print(parsefiles[recording] + " corrupted or not audio file.")
-                continue
-        else:
-            try:
-                #Open the .wav file and get the vital information
-                wav = wave.open(path + "/audio/" + parsefiles[recording], 'r')
-            except:
-                print(parsefiles[recording] + " corrupted or not audio file.")
-                continue
+        try:
+            wav = audiodata_getter(path, date, dates, parsefiles[recording], recording)
+        except:
+            continue
         frames = wav.readframes(-1)
         sig = np.fromstring(frames, "Int16")
         #Decimate the wav signal for parsing
@@ -161,7 +189,7 @@ def NMF_dir(path, pit, date=None, limit=None):
     #Actually do the NMF computation
     t2 = time()
     print("Data gathering complete. Doing nonnegative matrix factorization.")
-    estimator = decomposition.NMF(init = 'nndsvdar', max_iter=10000, random_state = 327)
+    estimator = decomposition.NMF(init = 'nndsvd', max_iter=10000, random_state = 327)
     print("Fitting the model to your data...")
     print("This may take some time...")
     w = estimator.fit_transform(data)
@@ -295,8 +323,10 @@ def NMF_plotH(path, dims = 2):
         den = stats.kde.gaussian_kde(components[:,x])
         den.covariance_factor = lambda : .25
         den._compute_covariance()
-        lin = np.linspace(0, int(np.max(components[:,x])), 200)
-        plt.plot(lin, den(lin))
+        #lin = np.linspace(0, int(np.max(components[:,x])), 200)
+        lin = range(0, len(components))
+        plt.plot(lin, components[:,x])
+        #plt.plot(lin, den(lin))
         #Set the axis to scientific notation
         ax.xaxis.get_major_formatter().set_powerlimits((0,1))
         ax.yaxis.get_major_formatter().set_powerlimits((0,1))
@@ -311,7 +341,6 @@ Used to run through command prompt instead of python console.
 '''
 if __name__ == "__main__":
     passed = True
-    import sys
     if len(sys.argv) == 3:
         NMF_dir(sys.argv[1], sys.argv[2])
     elif len(sys.argv) == 4:
@@ -325,7 +354,7 @@ if __name__ == "__main__":
         print("Called with wrong number of parameters.")
         print("First parameter is the path to the files (REQUIRED)")
         print("Second parameter is the pit to analyze (REQUIRED)")
-        print("Second parameter is the date to analyze (OPTIONAL)")
-        print("Third parameter is the number of files desired (OPTIONAL)")
+        print("Third parameter is the date to analyze (OPTIONAL)")
+        print("Fourth parameter is the number of files desired (OPTIONAL)")
 
 
