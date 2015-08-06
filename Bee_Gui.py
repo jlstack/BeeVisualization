@@ -98,16 +98,11 @@ class BeeApp(Tk.Tk):
         self.leftmost = make_hex8("".join(start_dir.split("/")))
         self.center = format(int(self.leftmost, 16) + 8, 'x')
         self.zoom = 1
-<<<<<<< HEAD
         self.files = self.audio_files = {'pit1': {}, 'pit2': {}}
-=======
-        self.files = self.audio_files = {}
->>>>>>> 0ddadd69481b5f2afd468590f23e84a1c76a9e66
         self.cax = self.fig = self.ax = self.stream = self.combined_spec = None
         self.current_view = "spec"
         self.get_next_16(self.center)
 
-<<<<<<< HEAD
         self.option_add('*tearOff', False)
         self.menubar = Tk.Menu(self)
         self.config(menu=self.menubar)
@@ -121,8 +116,6 @@ class BeeApp(Tk.Tk):
         channel.add_radiobutton(label="left", command=lambda: self.change_channel("left"))
         channel.add_radiobutton(label="right", command=lambda: self.change_channel("right"))
 
-=======
->>>>>>> 0ddadd69481b5f2afd468590f23e84a1c76a9e66
         self.matplotlib_plot = Tk.Frame(self)  # Frame that holds the matplotlib figure
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.matplotlib_plot)
         self.canvas.show()
@@ -157,7 +150,6 @@ class BeeApp(Tk.Tk):
 
     def toolbox_event(self, event):
             key_press_handler(event, self.canvas, self.toolbar)
-<<<<<<< HEAD
 
     def search_date(self):
         root = Tk.Tk()
@@ -186,8 +178,6 @@ class BeeApp(Tk.Tk):
     def change_channel(self, channel):
         self.channel = channel
         self.get_next_16(self.center)
-=======
->>>>>>> 0ddadd69481b5f2afd468590f23e84a1c76a9e66
 
     def on_zoom_out(self):
         """
@@ -216,10 +206,7 @@ class BeeApp(Tk.Tk):
         Creates plot of frequencies.
         :return: None
         """
-<<<<<<< HEAD
         print self.combined_spec[~np.all(self.combined_spec == 0, axis=1)].T.shape, self.combined_spec.shape
-=======
->>>>>>> 0ddadd69481b5f2afd468590f23e84a1c76a9e66
         if self.current_view == "spec":
             self.ax.clear()
             freqs = np.arange(0, self.combined_spec.shape[1] / 2.0, .5)
@@ -272,26 +259,16 @@ class BeeApp(Tk.Tk):
                     break
             if audio_file is not None:
                 print audio_dir + audio_file
-<<<<<<< HEAD
                 if audio_file not in self.audio_files[self.pit]:
-=======
-                if audio_file not in self.audio_files:
->>>>>>> 0ddadd69481b5f2afd468590f23e84a1c76a9e66
                     filename, file_extension = os.path.splitext(audio_file)
                     temp = tempfile.NamedTemporaryFile(suffix=file_extension)
                     temp.close()
                     with open(temp.name, 'wb') as r:
                         ftp.retrbinary('RETR ' + audio_dir + audio_file, r.write)
                     rate, wav = get_data(temp.name)
-<<<<<<< HEAD
                     self.audio_files[self.pit][audio_file] = (rate, wav)
                 else:
                     rate, wav = self.audio_files[self.pit][audio_file]
-=======
-                    self.audio_files[audio_file] = (rate, wav)
-                else:
-                    rate, wav = self.audio_files[audio_file]
->>>>>>> 0ddadd69481b5f2afd468590f23e84a1c76a9e66
                 self.message.config(text="Last Played:" + audio_file)
                 thread.start_new_thread(player, (self.play, rate, wav))
             else:
@@ -354,20 +331,12 @@ class BeeApp(Tk.Tk):
                 pass
             if i_file is not None:
                 print (i_file)
-<<<<<<< HEAD
                 if i_file not in self.files[self.pit]:
-=======
-                if i_file not in self.files:
->>>>>>> 0ddadd69481b5f2afd468590f23e84a1c76a9e66
                     r = open("from_server.npy", 'wb')
                     ftp.retrbinary('RETR ' + self.input_dir + i_dir + i_file, r.write)
                     r.close()
                     data = np.load("from_server.npy").item()
-<<<<<<< HEAD
                     self.files[self.pit][i_file] = data
-=======
-                    self.files[i_file] = data
->>>>>>> 0ddadd69481b5f2afd468590f23e84a1c76a9e66
                 else:
                     data = self.files[self.pit][i_file]
                 if combined_spec is None:
@@ -539,8 +508,4 @@ def main():
         pass
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     main()
-=======
-    main()
->>>>>>> 0ddadd69481b5f2afd468590f23e84a1c76a9e66
