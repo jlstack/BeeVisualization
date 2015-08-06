@@ -19,7 +19,7 @@ import math
 import numpy as np
 
 user = 'stackjl'
-password = 'sta.44,ck'
+password = ''
 ftp = ftplib.FTP('cs.appstate.edu', user, password)
 
 
