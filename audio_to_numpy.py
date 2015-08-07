@@ -18,6 +18,11 @@ noverlap = 2048
 
 
 def get_data(path):
+    """
+    Gets the data associated with an audio file, converting to wav when necessary.
+    :param path: path to audio file
+    :return: sample rate, audio data
+    """
     if path.endswith(".wav"):
         bee_rate, bee_data = read(path)
     else:
@@ -39,13 +44,14 @@ def get_data(path):
     return bee_rate, bee_data
 
 
-def combine_specgrams(data1, data2):
-    data1 = (data1[::, ::2] + data1[::, 1::2]) / 2.0
-    data2 = (data2[::, ::2] + data2[::, 1::2]) / 2.0
-    return np.hstack((data1, data2))
-
-
 def show_spectrogram(data, date, file_time):
+    """
+    Displays spectrogram for audio data.
+    :param data: audio data
+    :param date: date of file (used for title)
+    :param file_time: time of file (used for title)
+    :return: None
+    """
     plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
     plt.title(date + "T" + file_time)
     plt.ylim(0, 600)

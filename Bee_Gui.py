@@ -99,11 +99,11 @@ class BeeApp(Tk.Tk):
         self.center = format(int(self.leftmost, 16) + 8, 'x')
         self.zoom = 1
         self.files = self.audio_files = {'pit1': {}, 'pit2': {}}
-        self.cax = self.fig = self.ax = self.stream = self.combined_spec = None
+        self.cax = self.fig = self.ax = self.canvas = self.stream = self.combined_spec = None
         self.current_view = "spec"
         self.get_next_16(self.center)
 
-        self.option_add('*tearOff', False)
+        self.option_add('*tearOff', False)  # Creating a menubar
         self.menubar = Tk.Menu(self)
         self.config(menu=self.menubar)
         pit = Tk.Menu(self.menubar)
@@ -149,9 +149,18 @@ class BeeApp(Tk.Tk):
         self.message_frame.pack()
 
     def toolbox_event(self, event):
-            key_press_handler(event, self.canvas, self.toolbar)
+        """
+        Handles events for matplotlib toolbox.
+        :param event: event that occurred
+        :return: None
+        """
+        key_press_handler(event, self.canvas, self.toolbar)
 
     def search_date(self):
+        """
+        Uses DateDialog to search for a date and time.
+        :return: None
+        """
         root = Tk.Tk()
         root.withdraw()
         d = DateDialog(root)
@@ -165,10 +174,15 @@ class BeeApp(Tk.Tk):
             self.leftmost = make_hex8("".join(start_dir.split("/")))
             self.center = format(int(self.leftmost, 16) + 8, 'x')
             self.get_next_16(self.center)
-        except:
+        except TypeError:
             pass
 
     def change_pit(self, pit):
+        """
+        Changes which pit is being observed.
+        :param pit: pit to be observed
+        :return: None
+        """
         self.pit = pit
         self.input_dir = "/usr/local/bee/beemon/beeW/Luke/numpy_specs2/%s/" % self.pit
         self.mp3_dirs = ["/usr/local/bee/beemon/mp3/" + self.pit + "/%s/",
@@ -176,6 +190,11 @@ class BeeApp(Tk.Tk):
         self.get_next_16(self.center)
 
     def change_channel(self, channel):
+        """
+        Changes which channel is being observed.
+        :param channel: channel to be observed
+        :return: None
+        """
         self.channel = channel
         self.get_next_16(self.center)
 
@@ -297,6 +316,7 @@ class BeeApp(Tk.Tk):
     def get_next_16(self, hex_num):
         """
         Gets the next 16 files surrounding the specified hex time stamp.
+        Center time should be the time passed in.
         :param hex_num: hex time stamp that will be the center of the data
         :return: None
         """
@@ -327,7 +347,7 @@ class BeeApp(Tk.Tk):
                         if f == fname:
                             i_file = f
                             break
-            except ftplib.error_perm:
+            except ftplib.error_perm:  # thrown if directory does not exist
                 pass
             if i_file is not None:
                 print (i_file)
@@ -374,54 +394,37 @@ class BeeApp(Tk.Tk):
         if self.fig is None:
             fig, ax = plt.subplots()
             fig.canvas.draw()
-            ax.set_xticks(np.arange(0, combined_spec.shape[0], 1.0))
-            ax.set_xticklabels(["" for x in range(combined_spec.shape[0])])
-            if self.cax is None and np.count_nonzero(combined_spec) != 0:
-                self.cax = ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
-            cax = ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
-            ax.set_title(title)
-            labels = [item.get_text() for item in ax.get_xticklabels()]
-            labels[0] = file_time1
-            center_date, center_time = Dates.to_date(self.center)
-            labels[8] = center_time
-            labels[len(labels) - 1] = file_time2
-            ax.set_xticklabels(labels)
-            yfmt = tkr.FuncFormatter(numfmt)
-            ax.yaxis.set_major_formatter(yfmt)
-            if self.cax is not None:
-                cax.set_clim(self.cax.get_clim())
-                fig.colorbar(cax)
             self.fig = fig
             self.ax = ax
-        else:
-            self.ax.clear()
-            self.ax.set_xticks(np.arange(0, combined_spec.shape[0], 1.0))
-            self.ax.set_xticklabels(["" for x in range(combined_spec.shape[0])])
-            cax = self.ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
-            self.ax.set_title(title)
-            labels = [item.get_text() for item in self.ax.get_xticklabels()]
-            labels[0] = file_time1
-            center_date, center_time = Dates.to_date(self.center)
-            labels[8] = center_time
-            labels[len(labels) - 1] = file_time2
-            labels[len(labels) - 1] = file_time2
-            self.ax.set_xticklabels(labels)
-            yfmt = tkr.FuncFormatter(numfmt)
-            self.ax.yaxis.set_major_formatter(yfmt)
-            if self.cax is None and np.count_nonzero(combined_spec) != 0:
-                self.cax = self.ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
-                self.fig.colorbar(cax)
-            if self.cax is not None:
-                cax.set_clim(self.cax.get_clim())
+        self.ax.clear()
+        self.ax.set_xticks(np.arange(0, combined_spec.shape[0], 1.0))
+        self.ax.set_xticklabels(["" for x in range(combined_spec.shape[0])])
+        cax = self.ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
+        self.ax.set_title(title)
+        labels = [item.get_text() for item in self.ax.get_xticklabels()]
+        labels[0] = file_time1
+        center_date, center_time = Dates.to_date(self.center)
+        labels[8] = center_time
+        labels[len(labels) - 1] = file_time2
+        self.ax.set_xticklabels(labels)
+        yfmt = tkr.FuncFormatter(numfmt)
+        self.ax.yaxis.set_major_formatter(yfmt)
+        # sets the colorbar for all spectrograms
+        if self.cax is None and np.count_nonzero(combined_spec) != 0:
+            self.cax = self.ax.imshow(20 * np.log10(combined_spec.T), origin='lower', aspect='auto')
+            self.fig.colorbar(cax)
+        if self.cax is not None:
+            cax.set_clim(self.cax.get_clim())
+        if self.canvas is not None:
             self.canvas.draw()
 
 
 def numfmt(y, pos):
     """
     Divides each y label by 2.
-    :param x:
-    :param pos:
-    :return:
+    :param y: initial y value
+    :param pos: position of label
+    :return: modified y value
     """
     s = '{}'.format(y / 2)
     return s
