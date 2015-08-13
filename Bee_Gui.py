@@ -13,13 +13,13 @@ import ftplib
 from scipy.io.wavfile import read
 from pydub import AudioSegment
 import tempfile
-import thread
-import pyaudio
 import os
 import math
 import numpy as np
 
 ftp = username = password = None
+if not os.path.isdir("Gui_files"):
+    os.mkdir("Gui_files")
 
 
 class LoginDialog(tkSimpleDialog.Dialog):
@@ -135,7 +135,7 @@ class BeeApp(Tk.Tk):
         channel = Tk.Menu(self.menubar)
         self.menubar.add_cascade(menu=pit, label="pit")
         self.menubar.add_cascade(menu=channel, label="channel")
-        self.menubar.add_command(label="Search Time", command=self.search_date)
+        self.menubar.add_command(label="Search Date", command=self.search_date)
         pit.add_radiobutton(label="pit1", command=lambda: self.change_pit("pit1"))
         pit.add_radiobutton(label="pit2", command=lambda: self.change_pit("pit2"))
         channel.add_radiobutton(label="left", command=lambda: self.change_channel("left"))
@@ -206,6 +206,7 @@ class BeeApp(Tk.Tk):
             self.leftmost = make_hex8("".join(start_dir.split("/")))
             self.center = format(int(self.leftmost, 16) + 8, 'x')
             self.update_combined_spec(self.center)
+            self.on_spec()
         except TypeError:
             pass
 
@@ -381,18 +382,14 @@ class BeeApp(Tk.Tk):
             if audio_file is not None:
                 print audio_dir + audio_file
                 if audio_file not in self.audio_files[self.pit]:
-                    filename, file_extension = os.path.splitext(audio_file)
-                    temp = tempfile.NamedTemporaryFile(suffix=file_extension)
-                    temp.close()
-                    with open(temp.name, 'wb') as r:
+                    with open("Gui_files/" + "-".join(audio_file.split(":")), 'wb') as r:
                         ftp.retrbinary('RETR ' + audio_dir + audio_file, r.write)
-                    rate, wav = get_data(temp.name)
-                    os.system("open " + temp.name)
-                    self.audio_files[self.pit][audio_file] = (rate, wav)
+                    os.startfile("Gui_files\\" + "-".join(audio_file.split(":")))
+                    self.audio_files[self.pit][audio_file] = "Gui_files\\" + "-".join(audio_file.split(":"))
+                    self.message.config(text="Found:" + audio_file)
                 else:
-                    rate, wav = self.audio_files[self.pit][audio_file]
-                self.message.config(text="Last Played:" + audio_file)
-                thread.start_new_thread(player, (self.play, rate, wav))
+                    self.message.config(text="Found:" + audio_file)
+                    os.startfile(self.audio_files[self.pit][audio_file])
             else:
                 self.message.config(text="No audio file.")
 
@@ -415,7 +412,6 @@ class BeeApp(Tk.Tk):
             try:
                 ftp.cwd(self.video_dir % date)
                 files = ftp.nlst()
-                print files
                 if files is not None:
                     for f in files:
                         if time in f or '-'.join(time.split(':')) in f:
@@ -429,12 +425,10 @@ class BeeApp(Tk.Tk):
         if audio_file is not None:
             print audio_dir + audio_file
             if audio_file not in self.audio_files[self.pit]:
-                filename, file_extension = os.path.splitext(audio_file)
-                temp = tempfile.NamedTemporaryFile(suffix=file_extension)
-                temp.close()
-                with open(temp.name, 'wb') as r:
+                with open("Gui_files\\" + "-".join(audio_file.split(":")), 'wb') as r:
                     ftp.retrbinary('RETR ' + audio_dir + audio_file, r.write)
-                os.system("open " + temp.name)
+                os.startfile("Gui_files\\" + "-".join(audio_file.split(":")))
+                self.message.config(text="Found:" + audio_file)
         else:
             self.message.config(text="No video file.")
 
@@ -500,10 +494,10 @@ class BeeApp(Tk.Tk):
             if i_file is not None:
                 print (i_file)
                 if i_file not in self.files[self.pit]:
-                    r = open("from_server.npy", 'wb')
+                    r = open("Gui_files/from_server.npy", 'wb')
                     ftp.retrbinary('RETR ' + self.input_dir + i_dir + i_file, r.write)
                     r.close()
-                    data = np.load("from_server.npy").item()
+                    data = np.load("Gui_files/from_server.npy").item()
                     self.files[self.pit][i_file] = data
                 else:
                     data = self.files[self.pit][i_file]
@@ -563,36 +557,13 @@ def make_hex8(hex_num):
     return hex_num
 
 
-def player(play_button, rate, wav):
-    """
-    Plays audio clip.
-    :param play_button: Button that was pressed to play. (Will configure it to be a stop button.)
-    :param rate: sample rate of the wave file
-    :param wav: audio file data
-    :return: None
-    """
-    play_button.config(text="Stop")
-    p = pyaudio.PyAudio()
-    stream = p.open(format=p.get_format_from_width(2), channels=1, rate=44100, output=True)
-    stream.start_stream()
-    start = 0
-    end = 1024
-    while start < len(wav) and not stop_playing:
-        stream.write(wav[start:end].tostring())
-        start += 1024
-        end = start + 1024
-    stream.close()
-    p.terminate()
-    play_button.config(text="Play")
-
-
 def on_closing(app):
     """
     Callback for the closing of the application.
     :return: None
     """
-    if os.path.isfile("from_server.npy"):
-        os.remove("from_server.npy")
+    if os.path.isfile("Gui_files/from_server.npy"):
+        os.remove("Gui_files/from_server.npy")
     ftp.close()
     app.destroy()
     plt.close()
