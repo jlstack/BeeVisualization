@@ -48,19 +48,20 @@ def audiolist_getter(path, pit, date=None, limit=None):
                     dates.append(dir)
                 if limit is not None and int(limit) <= len(audiofiles):
                     break
-        parsefiles = []
+        #parsefiles = []
         #Make sure the limit is set
         if limit is None:
             limit = len(audiofiles)
         limit = int(limit)
-        limited = 0
-        for rec in audiofiles:
-            name = os.path.splitext(rec)[1]
-            if name == ".wav" or name == ".mp3" or name == ".flac":
-                parsefiles.append(rec)
-                limited += 1
-                if len(parsefiles) == limit:
-                    break
+        parsefiles = audiofiles[:limit]
+        #limited = 0
+        #for rec in audiofiles:
+        #    name = os.path.splitext(rec)[1]
+        #    if name == ".wav" or name == ".mp3" or name == ".flac":
+        #        parsefiles.append(rec)
+        #        limited += 1
+        #        if len(parsefiles) == limit:
+        #            break
     #If not using the mp3 structure
     else:
         if date is not None:
@@ -73,17 +74,18 @@ def audiolist_getter(path, pit, date=None, limit=None):
                 audiofiles.append(os.listdir(path + dir))
                 if limit is not None and int(limit) <= len(audiofiles):
                     break
-        parsefiles = []
+        #parsefiles = []
         if limit is None:
             limit = len(audiofiles)
         limit = int(limit)
-        limited = 0
-        for rec in audiofiles:
-            parsefiles.append(rec)
-            limited += 1
-            if limit == len(parsefiles):
-                break
-    return dates, parsefiles, limited, path
+        parsefiles = audiofiles[:limit]
+        #limited = 0
+        #for rec in audiofiles:
+        #    parsefiles.append(rec)
+        #    limited += 1
+        #    if limit == len(parsefiles):
+        #        break
+    return dates, parsefiles, limit, path
 
 '''
 This method gets the data from the audio.  It does the correct transformations
@@ -189,7 +191,7 @@ def NMF_dir(path, pit, date=None, limit=None):
     #Actually do the NMF computation
     t2 = time()
     print("Data gathering complete. Doing nonnegative matrix factorization.")
-    estimator = decomposition.NMF(init = 'nndsvd', max_iter=10000, random_state = 327)
+    estimator = decomposition.NMF(init = 'nndsvdar', max_iter=10000, random_state = 327)
     print("Fitting the model to your data...")
     print("This may take some time...")
     w = estimator.fit_transform(data)
@@ -234,17 +236,17 @@ The dims parameter is the number of dimensions to visualize.
 '''
 def NMF_plot2d(path, dims = 2):
     t0 = time()
+    dims = int(dims)
     #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
     components = pickledData[0]
-    fig = plt.figure()
+    fig = plt.figure(dims + 1)
     pos = 1
-    dims = int(dims)
     #Plot the number of dimensions, from dim 1 to provided parameter.
     for y in range(dims):
         print("Loading dimension " + str(y + 1) + ".")
         for x in range(dims):
-            ax = fig.add_subplot(dims, dims, pos)
+            ax = fig.add_subplot(dims + 1, dims , pos)
             pos += 1
             if x != y:
                 #Plot data
@@ -254,8 +256,8 @@ def NMF_plot2d(path, dims = 2):
             #Set the axis to scientific notation
             ax.xaxis.get_major_formatter().set_powerlimits((0,1))
             ax.yaxis.get_major_formatter().set_powerlimits((0,1))
-    fig.suptitle("2D Visualization of Data")
-    print("Time to graph items: " + str(time() - t0) + " sec.")
+    plt.tight_layout(pad = 0, w_pad = -1, h_pad = -1)
+    fig.get_axes()[0].annotate('2D Visualization of Data', (0.5, 0.05), xycoords='figure fraction', ha='center', fontsize=20)
     plt.show()
     plt.close()
 
@@ -271,9 +273,9 @@ def NMF_plotW(path, dims = 2):
      #Load the multiplied matrix
      pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
      components = pickledData[2]
+     dims = int(dims)
      fig = plt.figure()
      pos = 1
-     dims = int(dims)
      #Plot the number of dimensions, from dim 1 to provided parameter.
      for y in range(dims):
          print("Loading dimension " + str(y + 1) + ".")
@@ -282,9 +284,9 @@ def NMF_plotW(path, dims = 2):
              pos += 1
              if x != y:
                  #Plot data for 2D histogram
-                 a, b, c = np.histogram2d(components[:,x], components[:,y], bins = 40)
+                 a, xlims, ylims = np.histogram2d(components[:,x], components[:,y], bins = 50)
                  a = np.flipud(np.rot90(a))
-                 mesh = plt.pcolormesh(b,c,np.ma.masked_where(a == 0, a))
+                 mesh = plt.pcolormesh(xlims, ylims, np.ma.masked_where(a == 0, a))
              else:
                  plt.hist(components[:,x], bins = 50)
              #Set the axis to scientific notation
@@ -310,9 +312,9 @@ def NMF_plotH(path, dims = 2):
     #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
     components = pickledData[3]
-    fig = plt.figure()
-    pos = 1
     dims = int(dims)
+    fig = plt.figure(dims + 1)
+    pos = 1
     factors = [num for num in range(1, int(dims / 2) + 1) if not dims % num] + [dims]
     #Plot the number of dimensions, from dim 1 to provided parameter.
     for x in range(dims):
@@ -330,7 +332,8 @@ def NMF_plotH(path, dims = 2):
         #Set the axis to scientific notation
         ax.xaxis.get_major_formatter().set_powerlimits((0,1))
         ax.yaxis.get_major_formatter().set_powerlimits((0,1))
-    fig.suptitle("Density Plots of H")
+    plt.tight_layout(pad = 0, w_pad = -1, h_pad = -1)
+    fig.get_axes()[0].annotate('Density Plots of H', (0.5, 0.02), xycoords='figure fraction', ha='center', fontsize=20)
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
     plt.close()
