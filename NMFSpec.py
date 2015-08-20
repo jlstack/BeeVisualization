@@ -16,6 +16,7 @@ import wave
 from scipy import signal
 from scipy import stats
 from matplotlib import pyplot as plt
+from matplotlib import ticker
 import os
 from time import time
 from pydub import AudioSegment
@@ -48,20 +49,11 @@ def audiolist_getter(path, pit, date=None, limit=None):
                     dates.append(dir)
                 if limit is not None and int(limit) <= len(audiofiles):
                     break
-        #parsefiles = []
         #Make sure the limit is set
         if limit is None:
             limit = len(audiofiles)
         limit = int(limit)
         parsefiles = audiofiles[:limit]
-        #limited = 0
-        #for rec in audiofiles:
-        #    name = os.path.splitext(rec)[1]
-        #    if name == ".wav" or name == ".mp3" or name == ".flac":
-        #        parsefiles.append(rec)
-        #        limited += 1
-        #        if len(parsefiles) == limit:
-        #            break
     #If not using the mp3 structure
     else:
         if date is not None:
@@ -74,17 +66,10 @@ def audiolist_getter(path, pit, date=None, limit=None):
                 audiofiles.append(os.listdir(path + dir))
                 if limit is not None and int(limit) <= len(audiofiles):
                     break
-        #parsefiles = []
         if limit is None:
             limit = len(audiofiles)
         limit = int(limit)
         parsefiles = audiofiles[:limit]
-        #limited = 0
-        #for rec in audiofiles:
-        #    parsefiles.append(rec)
-        #    limited += 1
-        #    if limit == len(parsefiles):
-        #        break
     return dates, parsefiles, limit, path
 
 '''
@@ -253,9 +238,13 @@ def NMF_plot2d(path, dims = 2):
                 plt.scatter(components[:, x], components[:, y], linewidth = 0.15)
             else:
                 plt.hist(components[:,x], bins = 50)
+            yticks = ax.get_yticks()
+            ax.set_yticks(yticks[::2])
             #Set the axis to scientific notation
             ax.xaxis.get_major_formatter().set_powerlimits((0,1))
             ax.yaxis.get_major_formatter().set_powerlimits((0,1))
+            plt.xticks(rotation = 40)
+    #Modify the layout so title is on bottom and graph size is maximized
     plt.tight_layout(pad = 0, w_pad = -1, h_pad = -1)
     fig.get_axes()[0].annotate('2D Visualization of Data', (0.5, 0.05), xycoords='figure fraction', ha='center', fontsize=20)
     plt.show()
@@ -332,6 +321,9 @@ def NMF_plotH(path, dims = 2):
         #Set the axis to scientific notation
         ax.xaxis.get_major_formatter().set_powerlimits((0,1))
         ax.yaxis.get_major_formatter().set_powerlimits((0,1))
+        #Limit the y-axis to the same scale for each subplot
+        plt.ylim((0, 2500))
+    #Modify the layout so title is on bottom and graph size is maximized
     plt.tight_layout(pad = 0, w_pad = -1, h_pad = -1)
     fig.get_axes()[0].annotate('Density Plots of H', (0.5, 0.02), xycoords='figure fraction', ha='center', fontsize=20)
     print("Time to graph items: " + str(time() - t0) + " sec.")
