@@ -23,6 +23,7 @@ from pydub import AudioSegment
 import pickle
 import tempfile
 from mpl_toolkits.mplot3d import Axes3D
+import Dates
 
 '''
 This function looks on the path provided for data from
@@ -55,6 +56,21 @@ def audiolist_getter(path, pit, date=None, limit=None):
         limit = int(limit)
         parsefiles = audiofiles[:limit]
     #If not using the mp3 structure
+    elif path == "/usr/local/bee/beemon/beeW/Luke/mp3s/":
+        if date is not None:
+            path = path + pit + "/" + date
+            audiofiles= os.listdir(path + "/audio/")
+        else:
+            path = path + pit + "/"
+            audiofiles = []
+            for dir in os.listdir(path):
+                audiofiles.append(os.listdir(path + dir))
+                if limit is not None and int(limit) <= len(audiofiles):
+                    break
+        if limit is None:
+            limit = len(audiofiles)
+        limit = int(limit)
+        parsefiles = audiofiles[:limit]
     else:
         if date is not None:
             path = path + pit + "/" + date
@@ -112,6 +128,34 @@ def audiodata_getter(path, date, filedate, filename, index):
         except:
             print(filename + " corrupted or not audio file.")
 
+def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
+    """
+    Ex: python create_specgram.py 2015-05-05 00:00:00 2015-05-05 00:00:00 pit1 left
+    """
+    spec_dir = "/usr/local/bee/beemon/beeW/Luke/numpy_specs2/"
+    timer = time()
+    combined_spec = []
+    start_hex, start_dir = Dates.to_hex(start_date, start_time)
+    end_hex, end_dir = Dates.to_hex(end_date, end_time)
+    start_int = int(start_hex, 16)
+    end_int = int(end_hex, 16)
+    for i in range(start_int, end_int+1):
+        i_hex = '{:08x}'.format(i)
+        i_dir = "/".join(i_hex[:-1]) + "/"
+        hex_date, hex_time = Dates.to_date(i_hex)
+        fname = spec_dir + pit + "/" + i_dir + i_hex + "_" + hex_date + "T" + hex_time + "_" + channel + ".spec.npy"
+        if os.path.isfile(fname):
+            data = np.load(fname).item()
+            combined_spec.append(data["intensities"])
+        else:
+            combined_spec.append([0] * 2049)
+    print(len(combined_spec))
+    combined_spec = np.array(combined_spec)
+    print(combined_spec.T.shape)
+    print(time() - timer)
+
+
+
 '''
 This function gets the files to be factorized, and
 then does nonnegative matrix factorization on the periodograms of the wav file specgrams.
@@ -141,7 +185,14 @@ def NMF_dir(path, pit, date=None, limit=None):
     dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
 
     print("Files to parse: " + str(limit))
+    if date is not None:
+        date = str(date)
+        newdate = date.split('-')[::-1]
+        newdate = '-'.join(newdate)
+        print(newdate)
     #Get the recordings and parse them for clustering
+    create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left")
+    start = time()
     for recording in range(len(parsefiles)):
         if count % int(limit/5) == 0:
             print(str(count) + " out of " + str(limit) + " audio files read!")
@@ -172,6 +223,7 @@ def NMF_dir(path, pit, date=None, limit=None):
         #Append it to the list of data
         for index in range(pxx.shape[1]):
             data.append(pxx[:,index])
+    print(time() - start)
     print("Number of periodograms: " + str(len(data)))
     #Actually do the NMF computation
     t2 = time()
