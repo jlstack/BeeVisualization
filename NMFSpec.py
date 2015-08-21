@@ -207,7 +207,7 @@ def NMF_plot3d(path):
     #Set the axis to scientific notation
     ax.xaxis.get_major_formatter().set_powerlimits((0,1))
     ax.yaxis.get_major_formatter().set_powerlimits((0,1))
-    fig.suptitle("3D Visualization of Data")
+    fig.suptitle("3D Visualization of Data", fontsize = 20)
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
     plt.close()
@@ -263,27 +263,31 @@ def NMF_plotW(path, dims = 2):
      pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
      components = pickledData[2]
      dims = int(dims)
-     fig = plt.figure()
+     fig = plt.figure(dims + 1)
      pos = 1
      #Plot the number of dimensions, from dim 1 to provided parameter.
      for y in range(dims):
          print("Loading dimension " + str(y + 1) + ".")
          for x in range(dims):
-             ax = fig.add_subplot(dims, dims, pos)
+             ax = fig.add_subplot(dims + 1, dims, pos)
              pos += 1
              if x != y:
                  #Plot data for 2D histogram
-                 a, xlims, ylims = np.histogram2d(components[:,x], components[:,y], bins = 50)
+                 a, xlims, ylims = np.histogram2d(components[:,x], components[:,y], bins = 500)
                  a = np.flipud(np.rot90(a))
                  mesh = plt.pcolormesh(xlims, ylims, np.ma.masked_where(a == 0, a))
              else:
                  plt.hist(components[:,x], bins = 50)
+             yticks = ax.get_yticks()
+             ax.set_yticks(yticks[::2])
              #Set the axis to scientific notation
              ax.xaxis.get_major_formatter().set_powerlimits((0,1))
              ax.yaxis.get_major_formatter().set_powerlimits((0,1))
+             plt.xticks(rotation = 40)
+     plt.tight_layout(pad = 0, w_pad = -1, h_pad = -1)
      print("Time to graph items: " + str(time() - t0) + " sec.")
+     fig.get_axes()[0].annotate('2D Histograms of W', (0.5, 0.05), xycoords='figure fraction', ha='center', fontsize=20)
      fig.subplots_adjust(right = 0.8)
-     fig.suptitle("2D Histograms of W")
      cax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
      fig.colorbar(mesh, cax = cax)
      plt.show()
