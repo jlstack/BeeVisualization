@@ -56,21 +56,6 @@ def audiolist_getter(path, pit, date=None, limit=None):
         limit = int(limit)
         parsefiles = audiofiles[:limit]
     #If not using the mp3 structure
-    elif path == "/usr/local/bee/beemon/beeW/Luke/mp3s/":
-        if date is not None:
-            path = path + pit + "/" + date
-            audiofiles= os.listdir(path + "/audio/")
-        else:
-            path = path + pit + "/"
-            audiofiles = []
-            for dir in os.listdir(path):
-                audiofiles.append(os.listdir(path + dir))
-                if limit is not None and int(limit) <= len(audiofiles):
-                    break
-        if limit is None:
-            limit = len(audiofiles)
-        limit = int(limit)
-        parsefiles = audiofiles[:limit]
     else:
         if date is not None:
             path = path + pit + "/" + date
@@ -104,7 +89,9 @@ def audiodata_getter(path, date, filedate, filename, index):
     if os.path.splitext(filename)[1] != ".wav":
         temp = tempfile.NamedTemporaryFile(suffix=".wav")
         if os.path.splitext(filename)[1] == ".mp3":
-            if "mp3" in path and date is None:
+            if "mp3s" in path:
+                sound = AudioSegment.from_file(path +  "/audio/" + filename, "mp3")
+            elif "mp3" in path and date is None:
                 sound = AudioSegment.from_file(path + filedate[index] + "/" + filename, "mp3")
             else:
                 sound = AudioSegment.from_file(path + filename, "mp3")
@@ -147,13 +134,13 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
         if os.path.isfile(fname):
             data = np.load(fname).item()
             combined_spec.append(data["intensities"])
-        else:
-            combined_spec.append([0] * 2049)
+#        else:
+#            combined_spec.append([0] * 2049)
     print(len(combined_spec))
     combined_spec = np.array(combined_spec)
-    print(combined_spec.T.shape)
+    print(combined_spec.shape)
     print(time() - timer)
-
+    return combined_spec
 
 
 '''
@@ -182,16 +169,18 @@ def NMF_dir(path, pit, date=None, limit=None):
         os.makedirs(save_dir + "Left/")
     if not os.path.isdir(save_dir + "Right/"):
         os.makedirs(save_dir + "Right/")
-    dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
-
-    print("Files to parse: " + str(limit))
     if date is not None:
         date = str(date)
         newdate = date.split('-')[::-1]
         newdate = '-'.join(newdate)
-        print(newdate)
+    if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/":
+        dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
+    else:
+        dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
+    print("Files to parse: " + str(limit))
     #Get the recordings and parse them for clustering
-    create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left")
+    new_specgrams = create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left")
+    '''
     start = time()
     for recording in range(len(parsefiles)):
         if count % int(limit/5) == 0:
@@ -199,7 +188,10 @@ def NMF_dir(path, pit, date=None, limit=None):
         if count >= limit:
             break
         try:
-            wav = audiodata_getter(path, date, dates, parsefiles[recording], recording)
+            if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/" + date:
+                wav = audiodata_getter(path, newdate, dates, parsefiles[recording], recording)
+            else:
+                wav = audiodata_getter(path, date, dates, parsefiles[recording], recording)
         except:
             continue
         frames = wav.readframes(-1)
@@ -225,20 +217,21 @@ def NMF_dir(path, pit, date=None, limit=None):
             data.append(pxx[:,index])
     print(time() - start)
     print("Number of periodograms: " + str(len(data)))
+    '''
     #Actually do the NMF computation
     t2 = time()
     print("Data gathering complete. Doing nonnegative matrix factorization.")
-    estimator = decomposition.NMF(init = 'nndsvdar', max_iter=10000, random_state = 327)
+    estimator = decomposition.NMF(n_components = 100, init = 'nndsvdar', max_iter=10000, random_state = 327)
     print("Fitting the model to your data...")
     print("This may take some time...")
-    w = estimator.fit_transform(data)
+    w = estimator.fit_transform(new_specgrams)#data)
     h = estimator.components_
     t3 = time()
     print(t3 - t2)
     #Save the dot product of the 2 matrices, the reconstruction error, the transformed data matrix, and the component matrix into a file called "NMFdata_xxx.npy"
     saveddata = [np.dot(w,h), estimator.reconstruction_err_, w, h]
     print("Saving results...")
-    pickle.dump(saveddata, open(save_dir + "/NMFdata_" + str(limit) + ".pkl", "wb"), protocol = 2)
+    pickle.dump(saveddata, open(save_dir + "/NMFdata_new" + str(limit) + ".pkl", "wb"), protocol = 2)
     print("Done.")
     print(time() - t0)
 
