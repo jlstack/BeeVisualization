@@ -216,8 +216,6 @@ def NMF_dir(path, pit, date=None, limit=None):
     t0 = time()
     #Get the current directory for data storage, as well as getting the audio path based on input
     save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
-    data = []
-    count = 0
     print("Reading audio files...")
     #Make sure the storage directories are there
     if not os.path.isdir("usr/local/bee/beemon/beeW/Chris/" + pit):
