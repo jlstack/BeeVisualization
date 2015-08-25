@@ -31,7 +31,7 @@ the date given pertaining to the pit that is passed in.
 
 The path parameter is the directory that has the wav files.
 The pit parameter is the pit to choose from.
-The day parameter is the day to get data from.
+The date parameter is the day to get data from.
 The limit parameter is the number of files to include.
 '''
 def audiolist_getter(path, pit, date=None, limit=None):
@@ -115,6 +115,18 @@ def audiodata_getter(path, date, filedate, filename, index):
         except:
             print(filename + " corrupted or not audio file.")
 
+'''
+This function is designed to get the specgrams from Luke's database of specgrams.
+Then, the function combines them into one 2D numpy array for factorization.
+This array is returned.
+
+The start_date parameter is the date of the first file.
+The start_time parameter is the start time of the first file.
+The end_date parameter is the date of the last file.
+The end_time parameter is the start time of the last file.
+The pit parameter is the pit to choose from.
+The channel parameter is left or right mic (ALWAYS left for pit2).
+'''
 def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     """
     Ex: python create_specgram.py 2015-05-05 00:00:00 2015-05-05 00:00:00 pit1 left
@@ -134,59 +146,31 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
         if os.path.isfile(fname):
             data = np.load(fname).item()
             combined_spec.append(data["intensities"])
-#        else:
-#            combined_spec.append([0] * 2049)
-    print(len(combined_spec))
     combined_spec = np.array(combined_spec)
     print(combined_spec.shape)
     print(time() - timer)
     return combined_spec
 
-
 '''
-This function gets the files to be factorized, and
-then does nonnegative matrix factorization on the periodograms of the wav file specgrams.
+This function reads each file from the parsefiles list and gets the data
+for the specgrams for each file.  It does this through the wav file itself.
+A list of the columns of the specgrams is returned.
 
+The parsefiles parameter is a list of the files to read in.
 The path parameter is the directory that has the wav files.
 The pit parameter is the pit to choose from.
-The day parameter is the day to get data from.
-The limit parameter is the number of files to include.
+The date parameter is the day to get data from in the form DD-MM-YYYY.
+The dates parameter is the list of dates if one day was not chosen.
+The newdate parameter is the date in the format YYYY-MM-DD.
 '''
-def NMF_dir(path, pit, date=None, limit=None):
-    t0 = time()
-    #Get the current directory for data storage, as well as getting the audio path based on input
-    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
-    dates = []
-    data = []
+def specgramdata_getter(parsefiles, path, pit, date, dates):
     count = 0
-    print("Reading audio files...")
-    #Make sure the storage directories are there
-    if not os.path.isdir("usr/local/bee/beemon/beeW/Chris/" + pit):
-        os.makedirs("usr/local/bee/beemon/beeW/Chris/" + pit)
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-    if not os.path.isdir(save_dir + "Left/"):
-        os.makedirs(save_dir + "Left/")
-    if not os.path.isdir(save_dir + "Right/"):
-        os.makedirs(save_dir + "Right/")
-    if date is not None:
-        date = str(date)
-        newdate = date.split('-')[::-1]
-        newdate = '-'.join(newdate)
-    if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/":
-        dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
-    else:
-        dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
-    print("Files to parse: " + str(limit))
-    #Get the recordings and parse them for clustering
-    new_specgrams = create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left")
-    '''
+    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
+    data = []
     start = time()
     for recording in range(len(parsefiles)):
-        if count % int(limit/5) == 0:
-            print(str(count) + " out of " + str(limit) + " audio files read!")
-        if count >= limit:
-            break
+        if count % 100 == 0:
+            print(str(count) + " audio files read!")
         try:
             if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/" + date:
                 wav = audiodata_getter(path, newdate, dates, parsefiles[recording], recording)
@@ -217,21 +201,58 @@ def NMF_dir(path, pit, date=None, limit=None):
             data.append(pxx[:,index])
     print(time() - start)
     print("Number of periodograms: " + str(len(data)))
-    '''
+    return data
+
+'''
+This function gets the files to be factorized, and
+then does nonnegative matrix factorization on the periodograms of the wav file specgrams.
+
+The path parameter is the directory that has the wav files.
+The pit parameter is the pit to choose from.
+The date parameter is the day to get data from.
+The limit parameter is the number of files to include.
+'''
+def NMF_dir(path, pit, date=None, limit=None):
+    t0 = time()
+    #Get the current directory for data storage, as well as getting the audio path based on input
+    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
+    data = []
+    count = 0
+    print("Reading audio files...")
+    #Make sure the storage directories are there
+    if not os.path.isdir("usr/local/bee/beemon/beeW/Chris/" + pit):
+        os.makedirs("usr/local/bee/beemon/beeW/Chris/" + pit)
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+    if not os.path.isdir(save_dir + "Left/"):
+        os.makedirs(save_dir + "Left/")
+    if not os.path.isdir(save_dir + "Right/"):
+        os.makedirs(save_dir + "Right/")
+    if date is not None:
+        date = str(date)
+        newdate = date.split('-')[::-1]
+        newdate = '-'.join(newdate)
+    dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
+    print("Files to parse: " + str(limit))
+    #Get the recordings and parse them for clustering
+    if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/" + date:
+        data = create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left")
+    else:
+        data = specgramdata_getter(parsefiles, path, pit, date, dates, newdate)
     #Actually do the NMF computation
     t2 = time()
     print("Data gathering complete. Doing nonnegative matrix factorization.")
-    estimator = decomposition.NMF(n_components = 100, init = 'nndsvdar', max_iter=10000, random_state = 327)
+    estimator = decomposition.NMF(n_components = 50, init = 'nndsvdar', max_iter=10000, random_state = 327)
     print("Fitting the model to your data...")
     print("This may take some time...")
-    w = estimator.fit_transform(new_specgrams)#data)
+    w = estimator.fit_transform(data)
     h = estimator.components_
     t3 = time()
     print(t3 - t2)
     #Save the dot product of the 2 matrices, the reconstruction error, the transformed data matrix, and the component matrix into a file called "NMFdata_xxx.npy"
     saveddata = [np.dot(w,h), estimator.reconstruction_err_, w, h]
     print("Saving results...")
-    pickle.dump(saveddata, open(save_dir + "/NMFdata_new" + str(limit) + ".pkl", "wb"), protocol = 2)
+    pickle.dump(saveddata, open(save_dir + "/NMFdata_" + str(limit) + ".pkl", "wb"), protocol = 2)
     print("Done.")
     print(time() - t0)
 
