@@ -39,8 +39,10 @@ def get_data(path):
     data_type = np.iinfo(bee_data.dtype)
     dmin = data_type.min
     dmax = data_type.max
+    bee_data = bee_data.astype(np.float64)
+    bee_data = 2.0 * ((bee_data - dmin) / (dmax - dmin)) - 1.0
+    bee_data = bee_data - np.mean(bee_data)
     bee_data = bee_data.astype(np.float32)
-    bee_data = 2 * ((bee_data - dmin) / (dmax - dmin)) - 1
     return bee_rate, bee_data
 
 
