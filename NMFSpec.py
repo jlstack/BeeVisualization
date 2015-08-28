@@ -148,17 +148,22 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
             data = np.load(fname).item()
             combined_spec.append(data["intensities"])
     a = np.asarray(combined_spec)
-    new_spec = np.zeros((len(a),math.ceil(len(a[0])/2)))
-    for i in range(0,math.floor(len(a[0])/2)*2, 2):
-        b=np.mean(a[:,i:i+2], axis=1)
+    new_spec = np.zeros((len(a),math.ceil(len(a[0])/3)))
+    for i in range(0,math.floor(len(a[0])/3)*3, 3):
+        b=np.mean(a[:,i:i+3], axis=1)
         b = b.reshape((1,len(b)))
         b = b.T
-        new_spec[:,i/2] = b.ravel()
-    if len(a[0]) % 2 != 0:
+        new_spec[:,i/3] = b.ravel()
+    if len(a[0]) % 3 == 1:
         new_spec[:,-1] = a[:,-1].ravel()
+    elif len(a[0]) % 3 == 2:
+        b=np.mean(a[:,-2:], axis=1)
+        b = b.reshape((1,len(b)))
+        b = b.T
+        new_spec[:,-1] = b.ravel()
     print(new_spec.shape)
     print(time() - timer)
-    return combined_spec
+    return new_spec
 
 '''
 This function reads each file from the parsefiles list and gets the data
@@ -231,8 +236,8 @@ def specgram_viewer(parsefiles, path, pit, date, dates, newdate):
     print("Got second specgram set")
     fig = plt.figure(2)
     for x in range(2):
-        ax = fig.add_subplot(0, x, x)
-        plt.plot("spec" + (x+1))
+        ax = fig.add_subplot(1, 2, x)
+        plt.plot("spec" + str(x+1))
     plt.show()
     plt.close()
 
@@ -265,7 +270,7 @@ def NMF_dir(path, pit, date=None, limit=None):
         newdate = '-'.join(newdate)
     dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
     print("Files to parse: " + str(limit))
-    specgram_viewer(parsefiles, path, pit, date, dates, newdate)
+    #specgram_viewer(parsefiles, path, pit, date, dates, newdate)
     #Get the recordings and parse them for clustering
     if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/" + date:
         data = create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left")
