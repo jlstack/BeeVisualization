@@ -24,6 +24,7 @@ import pickle
 import tempfile
 from mpl_toolkits.mplot3d import Axes3D
 import Dates
+import math
 
 '''
 This function looks on the path provided for data from
@@ -146,8 +147,16 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
         if os.path.isfile(fname):
             data = np.load(fname).item()
             combined_spec.append(data["intensities"])
-    combined_spec = np.array(combined_spec)
-    print(combined_spec.shape)
+    a = np.asarray(combined_spec)
+    new_spec = np.zeros((len(a),math.ceil(len(a[0])/2)))
+    for i in range(0,math.floor(len(a[0])/2)*2, 2):
+        b=np.mean(a[:,i:i+2], axis=1)
+        b = b.reshape((1,len(b)))
+        b = b.T
+        new_spec[:,i/2] = b.ravel()
+    if len(a[0]) % 2 != 0:
+        new_spec[:,-1] = a[:,-1].ravel()
+    print(new_spec.shape)
     print(time() - timer)
     return combined_spec
 
@@ -163,7 +172,7 @@ The date parameter is the day to get data from in the form DD-MM-YYYY.
 The dates parameter is the list of dates if one day was not chosen.
 The newdate parameter is the date in the format YYYY-MM-DD.
 '''
-def specgramdata_getter(parsefiles, path, pit, date, dates):
+def specgramdata_getter(parsefiles, path, pit, date, dates, newdate):
     count = 0
     save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
     data = []
@@ -204,6 +213,30 @@ def specgramdata_getter(parsefiles, path, pit, date, dates):
     return data
 
 '''
+This function gets the specgrams and plots them side by side for
+comparison.
+
+The parsefiles parameter is a list of the files to read in.
+The path parameter is the directory that has the wav files.
+The pit parameter is the pit to choose from.
+The date parameter is the day to get data from in the form DD-MM-YYYY.
+The dates parameter is the list of dates if one day was not chosen.
+The newdate parameter is the date in the format YYYY-MM-DD.
+
+'''
+def specgram_viewer(parsefiles, path, pit, date, dates, newdate):
+    spec1 = np.asarray(create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left"))
+    print("Got first specgram set")
+    spec2 = np.asarray(specgramdata_getter(parsefiles, path, pit, date, dates, newdate))
+    print("Got second specgram set")
+    fig = plt.figure(2)
+    for x in range(2):
+        ax = fig.add_subplot(0, x, x)
+        plt.plot("spec" + (x+1))
+    plt.show()
+    plt.close()
+
+'''
 This function gets the files to be factorized, and
 then does nonnegative matrix factorization on the periodograms of the wav file specgrams.
 
@@ -232,6 +265,7 @@ def NMF_dir(path, pit, date=None, limit=None):
         newdate = '-'.join(newdate)
     dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
     print("Files to parse: " + str(limit))
+    specgram_viewer(parsefiles, path, pit, date, dates, newdate)
     #Get the recordings and parse them for clustering
     if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/" + date:
         data = create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left")
@@ -240,7 +274,7 @@ def NMF_dir(path, pit, date=None, limit=None):
     #Actually do the NMF computation
     t2 = time()
     print("Data gathering complete. Doing nonnegative matrix factorization.")
-    estimator = decomposition.NMF(n_components = 50, init = 'nndsvdar', max_iter=10000, random_state = 327)
+    estimator = decomposition.NMF(n_components = 10, init = 'nndsvdar', max_iter = 1000, nls_max_iter = 10000, random_state = 327)
     print("Fitting the model to your data...")
     print("This may take some time...")
     w = estimator.fit_transform(data)
