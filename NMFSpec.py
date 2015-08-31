@@ -265,16 +265,16 @@ def NMF_dir(path, pit, date=None, limit=None):
         newdate = '-'.join(newdate)
     dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
     print("Files to parse: " + str(limit))
-    specgram_viewer(parsefiles, path, pit, date, dates, newdate)
+    #specgram_viewer(parsefiles, path, pit, date, dates, newdate)
     #Get the recordings and parse them for clustering
     if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/" + date:
-        data = create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left")
+        data = create_specgrams(newdate, "17:00:00", newdate, "17:59:59", pit, "left")
     else:
         data = specgramdata_getter(parsefiles, path, pit, date, dates, newdate)
     #Actually do the NMF computation
     t2 = time()
     print("Data gathering complete. Doing nonnegative matrix factorization.")
-    estimator = decomposition.NMF(n_components = 10, init = 'nndsvdar', max_iter = 1000, nls_max_iter = 10000, random_state = 327, tol = 0.001)
+    estimator = decomposition.NMF(n_components = 5, init = 'nndsvdar', max_iter = 1000, nls_max_iter = 10000, random_state = 327, tol = 0.001)
     print("Fitting the model to your data...")
     print("This may take some time...")
     w = estimator.fit_transform(data)
@@ -403,7 +403,10 @@ def NMF_plotH(path, dims = 2):
     #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
     components = pickledData[3]
-    dims = int(dims)
+    components = np.asarray(components)
+    components = components.T
+    print(components.shape)
+    '''dims = int(dims)
     fig = plt.figure(dims + 1)
     pos = 1
     factors = [num for num in range(1, int(dims / 2) + 1) if not dims % num] + [dims]
@@ -427,7 +430,23 @@ def NMF_plotH(path, dims = 2):
         plt.ylim((0, 2500))
     #Modify the layout so title is on bottom and graph size is maximized
     plt.tight_layout(pad = 0, w_pad = -1, h_pad = -1)
-    fig.get_axes()[0].annotate('Density Plots of H', (0.5, 0.02), xycoords='figure fraction', ha='center', fontsize=20)
+    fig.get_axes()[0].annotate('Density Plots of H', (0.5, 0.02), xycoords='figure fraction', ha='center', fontsize=20)'''
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    #den = stats.kde.gaussian_kde(components[:, :dims])
+    #den.covariance_factor = lambda : .25
+    #den._compute_covariance()
+    lin = range(0, len(components))
+    plt.plot(lin, components[:, :dims])
+    ax.xaxis.get_major_formatter().set_powerlimits((0,1))
+    ax.yaxis.get_major_formatter().set_powerlimits((0,1))
+    #Limit the y-axis to the same scale for each subplot
+    maxht = np.amax(components[:, :dims])
+    if np.amax(maxht) < 2500:
+        plt.ylim((0, maxht))
+    else:
+        plt.ylim((0, 2500))
+    plt.title('Density Plots of H for 05-05-2015 17th Hour', fontsize = 20)
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
     plt.close()
