@@ -251,7 +251,7 @@ def NMF_dir(path, pit, hour, components = 5, date = None, limit = None):
     hour = str(hour)
     components = int(components)
     #Get the current directory for data storage, as well as getting the audio path based on input
-    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
+    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/10comp/"
     print("Reading audio files...")
     #Make sure the storage directories are there
     if not os.path.isdir("usr/local/bee/beemon/beeW/Chris/" + pit):
@@ -287,7 +287,7 @@ def NMF_dir(path, pit, hour, components = 5, date = None, limit = None):
     #Save the dot product of the 2 matrices, the reconstruction error, the transformed data matrix, and the component matrix into a file called "NMFdata_xxx.npy"
     saveddata = [np.dot(w,h), estimator.reconstruction_err_, w, h]
     print("Saving results...")
-    pickle.dump(saveddata, open(save_dir + "10comp/NMFdata" + hour + "_" + str(limit) + ".pkl", "wb"), protocol = 2)
+    pickle.dump(saveddata, open(save_dir + "NMFdata" + hour + "_" + str(limit) + ".pkl", "wb"), protocol = 2)
     print("Done.")
     print(time() - t0)
 
@@ -371,6 +371,7 @@ def NMF_plotW(path, date, t, dims = 2):
      plt.plot(lin, components[:, :dims])
      ax.xaxis.set_ticks(np.arange(0, len(components), 250))
      ax.xaxis.set_label_text("Seconds")
+     ax.yaxis.set_label_text("Intensity")
      plt.xlim((0, len(components)))
      #Limit the y-axis to the same scale for each subplot
      maxht = np.amax(components[:, :dims])
@@ -405,6 +406,7 @@ def NMF_plotH(path, date, t, dims = 2):
     plt.plot(lin, components[:, :dims])
     ax.xaxis.set_ticks([0, 200, 400, 600, 800, 1000])
     ax.xaxis.set_label_text("Hertz")
+    ax.yaxis.set_label_text("Intensity")
     plt.xlim((0, len(components)))
     #Limit the y-axis to the same scale for each subplot
     maxht = np.amax(components[:, :dims])
