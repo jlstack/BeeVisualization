@@ -17,6 +17,7 @@ import os
 import math
 import numpy as np
 
+global ftp
 ftp = username = password = None
 if not os.path.isdir("Gui_files"):
     os.mkdir("Gui_files")
@@ -114,7 +115,7 @@ class BeeApp(Tk.Tk):
         self.title("Bee App")
         self.pit = pit
         self.input_dir = "/usr/local/bee/beemon/beeW/Luke/numpy_specs2/%s/" % self.pit
-        self.mp3_dirs = ["/usr/local/bee/beemon/mp3/" + self.pit + "/%s/",
+        self.mp3_dirs = ["/usr/local/bee/beemon/beeW/Luke/mp3s/" + self.pit + "/%s/audio/",
                          "/usr/local/bee/beemon/" + self.pit + "/%s/audio/"]
         self.video_dir = "/usr/local/bee/beemon/" + self.pit + "/%s/video/"
         start_hex, start_dir = Dates.to_hex(date, time)
@@ -123,7 +124,7 @@ class BeeApp(Tk.Tk):
         self.leftmost = make_hex8("".join(start_dir.split("/")))
         self.center = format(int(self.leftmost, 16) + 8, 'x')
         self.zoom = 1
-        self.files = self.audio_files = {'pit1': {}, 'pit2': {}}
+        self.files = self.server_files = {'pit1': {}, 'pit2': {}}
         self.cax = self.stream = self.combined_spec = None
         self.current_view = "spec"
         self.update_combined_spec(self.center)
@@ -161,11 +162,11 @@ class BeeApp(Tk.Tk):
         self.zoom_out.grid(row=0, column=0)
         self.zoom_in = Tk.Button(self.control_frame, text="+", command=self.on_zoom_in)
         self.zoom_in.grid(row=0, column=1)
-        if self.zoom == 1:
+        if self.zoom == -8:
             self.zoom_in['state'] = 'disabled'  # Makes zoom in button unclickable
-        self.play = Tk.Button(self.control_frame, text="Audio", command=self.on_play)
+        self.play = Tk.Button(self.control_frame, text="Audio", command=self.on_audio)
         self.play.grid(row=0, column=2)
-        self.play_video = Tk.Button(self.control_frame, text="Video", command=self.on_play_video)
+        self.play_video = Tk.Button(self.control_frame, text="Video", command=self.on_video)
         self.play_video.grid(row=0, column=3)
         self.toggle = Tk.Button(self.control_frame, text="Frequencies", command=self.on_plot)
         self.toggle.grid(row=0, column=4)
@@ -218,7 +219,7 @@ class BeeApp(Tk.Tk):
         """
         self.pit = pit
         self.input_dir = "/usr/local/bee/beemon/beeW/Luke/numpy_specs2/%s/" % self.pit
-        self.mp3_dirs = ["/usr/local/bee/beemon/mp3/" + self.pit + "/%s/",
+        self.mp3_dirs = ["/usr/local/bee/beemon/mp3/" + self.pit + "/%s/audio/",
                          "/usr/local/bee/beemon/" + self.pit + "/%s/audio/"]
         self.video_dir = "/usr/local/bee/beemon/" + self.pit + "/%s/video/"
         self.update_combined_spec(self.center)
@@ -239,25 +240,33 @@ class BeeApp(Tk.Tk):
         Zooms out one level and calls self.update_combined_spec to update the spectrogram.
         :return: None
         """
-        if self.zoom < 28:
+        if self.zoom < 1:
+            self.zoom += 1
+            self.ax.set_xlim((512 - 2**(9 + self.zoom) / 2, 512 + 2**(9 + self.zoom) / 2 - 1))
+            self.canvas.draw()
+        elif self.zoom < 28:
             self.zoom += 1
             self.update_combined_spec(self.center)
-        if self.zoom > 1:
+            self.update_matplotlib_fig()
+        if self.zoom > -8:
             self.zoom_in['state'] = 'normal'
-        self.update_matplotlib_fig()
-
 
     def on_zoom_in(self):
         """
         Zooms in one level and calls self.update_combined_spec to update the spectrogram.
         :return: None
         """
-        if self.zoom != 1:
+        if self.zoom != -8 and self.zoom > 1:
             self.zoom -= 1
             self.update_combined_spec(self.center)
-        if self.zoom == 1:
+        elif self.zoom != -8 and self.zoom <= 1:
+            self.zoom -= 1
+            self.ax.set_xlim((512 - 2**(9 + self.zoom) / 2, 512 + 2**(9 + self.zoom) / 2 - 1))
+            self.canvas.draw()
+        if self.zoom == -8:
             self.zoom_in['state'] = 'disabled'
         self.update_matplotlib_fig()
+
 
     def on_plot(self):
         """
@@ -286,13 +295,19 @@ class BeeApp(Tk.Tk):
         """
         self.ax.clear()
         date1, time1 = Dates.to_date(self.leftmost)
-        date2, time2 = Dates.to_date('{:08x}'.format(int(self.leftmost, 16) + 2 ** (3 + self.zoom) - 1))
+        date2, time2 = Dates.to_date('{:08x}'.format(int(self.leftmost, 16) + 2 ** (9 + self.zoom) - 1))
         self.ax.set_title(date1 + "T" + time1 + " - " + date2 + "T" + time2)
         freqs = np.arange(0, self.combined_spec.shape[1] / 2.0, .5)
         if not math.isnan(np.mean(self.combined_spec[~np.all(self.combined_spec == 0, axis=1)].T)):
-            self.ax.set_ylim((0, np.amax(self.combined_spec[~np.all(self.combined_spec == 0, axis=1)].T[2:, :])))
-            # Takes max after column 2 because there is often an outlier at the first two columns
             self.ax.plot(freqs, np.mean(self.combined_spec[~np.all(self.combined_spec == 0, axis=1)].T, axis=1))
+            for i in range(len(self.combined_spec.T)):
+                if np.amax(self.combined_spec.T[20:, :]) in self.combined_spec.T[i]:
+                    for j in range(len(self.combined_spec.T[i])):
+                        if self.combined_spec.T[i, j] == np.amax(self.combined_spec.T[20:, :]):
+                            print i, j
+                            break
+                    break
+            self.ax.set_ylim((0, np.amax(self.combined_spec.T[20:, :])))
         else:
             self.ax.plot(freqs, [0] * len(freqs))
         self.canvas.draw()
@@ -302,7 +317,7 @@ class BeeApp(Tk.Tk):
         Creates the current spectrogram for combined_spec.
         :return: None
         """
-        rightmost = '{:08x}'.format(int(self.leftmost, 16) + 2 ** (3 + self.zoom) - 1)
+        rightmost = '{:08x}'.format(int(self.leftmost, 16) + 2 ** (9 + self.zoom) - 1)
         date1, file_time1 = Dates.to_date(self.leftmost)
         date2, file_time2 = Dates.to_date(rightmost)
         if not date1 == date2:
@@ -310,7 +325,7 @@ class BeeApp(Tk.Tk):
         else:
             title = date1
         self.ax.clear()
-        self.ax.set_xticks(np.arange(0, self.combined_spec.shape[0], 1.0))
+        self.ax.set_xticks(np.arange(0, self.combined_spec.shape[0], 16.0))
         self.ax.set_xticklabels(["" for x in range(self.combined_spec.shape[0])])
         cax = self.ax.imshow(20 * np.log10(self.combined_spec.T), origin='lower',
                              aspect='auto', interpolation='nearest')
@@ -318,7 +333,7 @@ class BeeApp(Tk.Tk):
         labels = [item.get_text() for item in self.ax.get_xticklabels()]
         labels[0] = file_time1
         center_date, center_time = Dates.to_date(self.center)
-        labels[8] = center_time
+        labels[len(labels) / 2] = center_time
         labels[len(labels) - 1] = file_time2
         self.ax.set_xticklabels(labels)
         yfmt = tkr.FuncFormatter(numfmt)
@@ -344,56 +359,7 @@ class BeeApp(Tk.Tk):
         else:
             self.create_plot()
 
-    def on_play(self):
-        """
-        Callback for play button. Locates the file associated with given time if the file exists.
-        Then calls the play function to play the located file.
-        :return: None
-        """
-        global stop_playing
-        if self.play.config('text')[-1] == "Stop":
-            stop_playing = True
-        else:
-            stop_playing = False
-            audio_dir = None
-            audio_file = None
-            for i in range(0, 60):
-                sec = int(self.center, 16)
-                sec -= i
-                sec = format(sec, 'x')
-                date, time = Dates.to_date(sec)
-                date = date.split('-')
-                date.reverse()
-                date = '-'.join(date)
-                for j in range(0, len(self.mp3_dirs)):
-                    try:
-                        ftp.cwd(self.mp3_dirs[j] % date)
-                        files = ftp.nlst()
-                        if files is not None:
-                            for f in files:
-                                if time in f or '-'.join(time.split(':')) in f:
-                                    audio_dir = self.mp3_dirs[j] % date
-                                    audio_file = f
-                                    break
-                    except ftplib.error_perm:
-                        pass
-                if audio_file is not None:
-                    break
-            if audio_file is not None:
-                print audio_dir + audio_file
-                if audio_file not in self.audio_files[self.pit]:
-                    with open("Gui_files/" + "-".join(audio_file.split(":")), 'wb') as r:
-                        ftp.retrbinary('RETR ' + audio_dir + audio_file, r.write)
-                    os.startfile("Gui_files\\" + "-".join(audio_file.split(":")))
-                    self.audio_files[self.pit][audio_file] = "Gui_files\\" + "-".join(audio_file.split(":"))
-                    self.message.config(text="Found:" + audio_file)
-                else:
-                    self.message.config(text="Found:" + audio_file)
-                    os.startfile(self.audio_files[self.pit][audio_file])
-            else:
-                self.message.config(text="No audio file.")
-
-    def on_play_video(self):
+    def on_audio(self):
         """
         Callback for play button. Locates the file associated with given time if the file exists.
         Then calls the play function to play the located file.
@@ -409,29 +375,92 @@ class BeeApp(Tk.Tk):
             date = date.split('-')
             date.reverse()
             date = '-'.join(date)
-            try:
-                ftp.cwd(self.video_dir % date)
-                files = ftp.nlst()
-                if files is not None:
-                    for f in files:
-                        if time in f or '-'.join(time.split(':')) in f:
-                            audio_dir = self.video_dir % date
-                            audio_file = f
-                            break
-            except ftplib.error_perm:
-                pass
+            for j in range(0, len(self.mp3_dirs)):
+                try:
+                    ftp.cwd(self.mp3_dirs[j] % date)
+                    files = ftp.nlst()
+                    if files is not None:
+                        for f in files:
+                            if time in f:
+                                audio_dir = self.mp3_dirs[j] % date
+                                audio_file = f
+                                break
+                except ftplib.error_perm, e:
+                    if "550" in e.message:
+                        pass
+                    else:
+                        pass
+                """
+                elif "421" in e.message:
+                    print "relogged in"
+                    ftp = ftplib.FTP('cs.appstate.edu', user, password)
+                """
             if audio_file is not None:
                 break
         if audio_file is not None:
             print audio_dir + audio_file
-            if audio_file not in self.audio_files[self.pit]:
-                with open("Gui_files\\" + "-".join(audio_file.split(":")), 'wb') as r:
+            if audio_file not in self.server_files[self.pit]:
+                with open("Gui_files/" + "-".join(audio_file.split(":")), 'wb') as r:
                     ftp.retrbinary('RETR ' + audio_dir + audio_file, r.write)
                 os.startfile("Gui_files\\" + "-".join(audio_file.split(":")))
-                self.message.config(text="Found:" + audio_file)
+                self.server_files[self.pit][audio_file] = "Gui_files\\" + "-".join(audio_file.split(":"))
+                self.message.config(text="Found:" + audio_dir + audio_file)
+            else:
+                self.message.config(text="Found:" + audio_dir + audio_file)
+                os.startfile(self.server_files[self.pit][audio_file])
+        else:
+            self.message.config(text="No audio file.")
+
+    def on_video(self):
+        """
+        Callback for play button. Locates the file associated with given time if the file exists.
+        Then calls the play function to play the located file.
+        :return: None
+        """
+        video_dir = video_file = None
+        for i in range(0, 60):
+            sec = int(self.center, 16)
+            sec -= i
+            sec = format(sec, 'x')
+            date, time = Dates.to_date(sec)
+            date = date.split('-')
+            date.reverse()
+            date = '-'.join(date)
+            try:
+                ftp.cwd(self.video_dir % date)
+                files = ftp.nlst()
+                print len(files)
+                if files is not None:
+                    for f in files:
+                        if time in f or '-'.join(time.split(':')) in f:
+                            video_dir = self.video_dir % date
+                            video_file = f
+                            break
+            except ftplib.error_perm, e:
+                if "550" in e.message:
+                    pass
+                else:
+                    pass
+                """
+                elif "421" in e.message:
+                    print "relogged in"
+                    ftp = ftplib.FTP('cs.appstate.edu', user, password)
+                """
+            if video_file is not None:
+                break
+        if video_file is not None:
+            print self.video_dir + video_file
+            if video_file not in self.server_files[self.pit]:
+                with open("Gui_files\\" + "-".join(video_file.split(":")), 'wb') as r:
+                    ftp.retrbinary('RETR ' + video_dir + video_file, r.write)
+                self.server_files[self.pit][video_file] = "Gui_files\\" + "-".join(video_file.split(":"))
+                os.startfile("Gui_files\\" + "-".join(video_file.split(":")))
+                self.message.config(text="Found:" + video_dir + video_file)
+            else:
+                self.message.config(text="Found:" + video_dir + video_file)
+                os.startfile(self.server_files[self.pit][video_file])
         else:
             self.message.config(text="No video file.")
-
 
     def on_right(self):
         """
@@ -439,7 +468,7 @@ class BeeApp(Tk.Tk):
         :return: None
         """
         cen = int(self.center, 16)
-        cen += 2 ** (3 + self.zoom) / 2
+        cen += 2 ** (9 + self.zoom) / 2
         self.center = format(cen, 'x')
         self.update_combined_spec(self.center)
         self.update_matplotlib_fig()
@@ -450,7 +479,7 @@ class BeeApp(Tk.Tk):
         :return: None
         """
         cen = int(self.center, 16)
-        cen -= 2 ** (3 + self.zoom) / 2
+        cen -= 2 ** (9 + self.zoom) / 2
         self.center = format(cen, 'x')
         self.update_combined_spec(self.center)
         self.update_matplotlib_fig()
@@ -462,11 +491,25 @@ class BeeApp(Tk.Tk):
         :param hex_num: hex time stamp that will be the center of the data
         :return: None
         """
+        from datetime import datetime
+        start_datetime = datetime.now()
         print ("Zoom: ", self.zoom)
         combined_spec = None
         lm = int(hex_num, 16)
-        lm -= 2 ** (3 + self.zoom) / 2  # leftmost value
-        for i in range(0, 2 ** (3 + self.zoom), 2 ** (self.zoom - 1)):
+        lm -= 2 ** (9 + self.zoom) / 2  # leftmost value
+        self.leftmost = make_hex8('{:08x}'.format(lm))
+        start_date, start_time = Dates.to_date('{:08x}'.format(lm))
+        end_date, end_time = Dates.to_date('{:08x}'.format(lm + 2 ** (9 + self.zoom)))
+        self.combined_spec = self.get_specgram(start_date, start_time, end_date, end_time)
+        print datetime.now() - start_datetime
+
+        """
+        print start_date, start_time, end_date, end_time
+        ftp.cwd("/u/css/stackjl/BeeVisualization/")
+        print "changed directories"
+        # ftp.sendcmd("python create_specgram2.py " + start_date + " " + start_time + " " + end_date + " " + end_time +
+        #             " " + self.pit + " " + self.channel + " " + self.zoom + " &> test2.txt")
+        for i in range(0, 2 ** (9 + self.zoom), 2 ** (self.zoom - 1)):
             i_hex = '{:08x}'.format(int(lm + i))
             i_hex = i_hex[:int(len(i_hex) - ((self.zoom - 1) / 4))]
             i_dir = "/".join(i_hex[:-1]) + "/"
@@ -489,8 +532,11 @@ class BeeApp(Tk.Tk):
                         if f == fname:
                             i_file = f
                             break
-            except ftplib.error_perm:  # thrown if directory does not exist
-                pass
+            except ftplib.error_perm, e:  # thrown if directory does not exist
+                if "550" in e.message:
+                    pass
+                else:
+                    pass
             if i_file is not None:
                 print (i_file)
                 if i_file not in self.files[self.pit]:
@@ -510,8 +556,54 @@ class BeeApp(Tk.Tk):
                     combined_spec = [0] * 2049
                 else:
                     combined_spec = np.vstack((combined_spec, [0] * 2049))
+        print combined_spec.shape
         self.combined_spec = combined_spec
-        self.leftmost = make_hex8('{:08x}'.format(lm))
+        print datetime.now() - start_datetime
+        start_datetime = datetime.now()
+        r = open("Gui_files/from_server.npz", 'wb')
+        ftp.retrbinary('RETR /u/css/stackjl/BeeVisualization/test.npz', r.write)
+        r.close()
+        data = np.load("Gui_files/from_server.npz")
+        """
+
+    def get_specgram(self, start_date, start_time, end_date, end_time):
+        fname = start_date + '_' + start_time + "-" + end_date + '_' + end_time + '_' + self.pit + "_" + str(self.zoom) + '.npz'
+        if fname.replace(':', '-') not in os.listdir("Gui_files"):
+            ftp.cwd("/u/css/stackjl/BeeVisualization/specgrams/")
+            files = ftp.nlst()
+            if fname not in files:
+                import paramiko
+                import select
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect("cs.appstate.edu", username='stackjl', password='sta.44,ck')
+                print "python ./BeeVisualization/create_specgram2.py " + start_date + " " + start_time + " " + \
+                      end_date + " " + end_time + " " + self.pit + " " + self.channel + " " + str(self.zoom)
+                stdin, stdout, stderr = ssh.exec_command("python ./BeeVisualization/create_specgram2.py " + start_date + " " +
+                                                         start_time + " " + end_date + " " + end_time + " " + self.pit + " " +
+                                                         self.channel + " " + str(self.zoom))
+                # Found at http://sebastiandahlgren.se/2012/10/11/using-paramiko-to-send-ssh-commands/
+                while not stdout.channel.exit_status_ready():
+                    pass
+                    """
+                    # Only print data if there is data to read in the channel
+                    if stdout.channel.recv_ready():
+                        rl, wl, xl = select.select([stdout.channel], [], [], 0.0)
+                        if len(rl) > 0:
+                            # Print data from stdout
+                            print stdout.channel.recv(1024),
+                    """
+                ssh.close()
+            import time
+            now = time.time()
+            r = open("Gui_files/" + fname.replace(':', '-'), 'wb')
+            ftp.retrbinary('RETR /u/css/stackjl/BeeVisualization/specgrams/' + fname, r.write)
+            r.close()
+            np.load("Gui_files/" + fname.replace(':', '-'))['intensities']
+            print time.time() - now
+        return np.load("Gui_files/" + fname.replace(':', '-'))['intensities']
+
+
 
 
 def numfmt(y, pos):
@@ -562,8 +654,12 @@ def on_closing(app):
     Callback for the closing of the application.
     :return: None
     """
-    if os.path.isfile("Gui_files/from_server.npy"):
-        os.remove("Gui_files/from_server.npy")
+    for f in os.listdir("Gui_files"):
+        try:
+            os.remove("Gui_files\\" + f)
+        except:
+            pass
+    os.rmdir("Gui_files")
     ftp.close()
     app.destroy()
     plt.close()
@@ -572,7 +668,7 @@ def on_closing(app):
 def main():
     root = Tk.Tk()
     root.withdraw()
-    while True:
+    while True:  # continues prompting until login is successful or window is closed
         try:
             login = LoginDialog(root)
             global user, password
@@ -582,9 +678,9 @@ def main():
             login.destroy()
             break
         except ftplib.error_perm:
-            tkMessageBox.showwarning(
-            "Login Failure", "Incorrect login credentials.\nPlease try again.")
-            pass
+            tkMessageBox.showwarning("Login Failure", "Incorrect login credentials.\nPlease try again.")
+        except TypeError:
+            return
     try:
         d = DateDialog(root)
         date, time, pit, channel = d.result
@@ -593,7 +689,7 @@ def main():
         app.protocol("WM_DELETE_WINDOW", lambda: on_closing(app))
         app.mainloop()
     except TypeError:
-        pass
+        return
 
 if __name__ == "__main__":
     main()
