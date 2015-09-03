@@ -1,6 +1,7 @@
-__author__ = 'lukestack'
-
+import Dates
 import os
+import numpy as np
+import tempfile
 from scipy.signal import resample
 from scipy.io.wavfile import read
 import matplotlib
@@ -8,14 +9,14 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tempfile
 from pydub import AudioSegment
-import numpy as np
-import Dates
 
+# rate that is used during resampling 
+sample_rate = 2048
 
+# parameters for specgram
 fs = 2048
 nfft = 4096
 noverlap = 2048
-
 
 def get_data(path):
     """
@@ -41,102 +42,144 @@ def get_data(path):
     dmax = data_type.max
     bee_data = bee_data.astype(np.float64)
     bee_data = 2.0 * ((bee_data - dmin) / (dmax - dmin)) - 1.0
-    bee_data = bee_data - np.mean(bee_data)
     bee_data = bee_data.astype(np.float32)
     return bee_rate, bee_data
 
 
-def show_spectrogram(data, date, file_time):
+def get_specgram(fname):
     """
-    Displays spectrogram for audio data.
-    :param data: audio data
-    :param date: date of file (used for title)
-    :param file_time: time of file (used for title)
-    :return: None
+    Generates spectrogram for given file.
+    :param fname: path to audio file
+    :return: spectrogram for audio file
     """
-    plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
-    plt.title(date + "T" + file_time)
-    plt.ylim(0, 600)
-    plt.yticks(np.arange(0, 601, 50.0))
-    plt.xlabel("Time (sec)")
-    plt.ylabel("Frequencies (hz)")
-    plt.show()
-    plt.close()
-
-
-def save_specgram_pkl(data, date, file_time, recording, output_dir, show=False):
-    sample_rate = 2048
-    data = resample(data, len(data) / 44100.0 * sample_rate)
-    if show:
-        show_spectrogram(data, date, file_time)
+    rate, data = get_data(fname)
+    data = resample(data, len(data) / float(rate) * sample_rate)
     specgram, freqs, time, img = plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
     specgram = abs(specgram)
-    hex_num, hex_dir = Dates.to_hex(date, file_time)
-    print (date, file_time, hex_num)
-    for i in range(-1, specgram.shape[1] + 1):
-        start_date, start_time = Dates.add_seconds_to_date(date, file_time, i)
-        end_date, end_time = Dates.add_seconds_to_date(start_date, start_time, 1)
-        start_datetime = start_date + 'T' + start_time
-        end_datetime = end_date + 'T' + end_time
-        hex_num, hex_dir = Dates.to_hex(start_date, start_time)
-        if not os.path.isdir(output_dir + hex_dir):
-            os.makedirs(output_dir + hex_dir)
-        if "left" in recording:
-            output = output_dir + hex_dir + hex_num + "_" + start_date + "T" + start_time + "_left.spec.npy"
-        else:
-            output = output_dir + hex_dir + hex_num + "_" + start_date + "T" + start_time + "_right.spec.npy"
-        if i == -1:
-            intensities = specgram[:, 0]
-        elif i == specgram.shape[1]:
-            intensities = specgram[:, specgram.shape[1] - 1]
-        else:
-            intensities = specgram[:, i]	
-        data = {"intensities": intensities.astype(np.float32).tolist(), "sample_rate": sample_rate,
-                "start_datetime": start_datetime, "end_datetime": end_datetime}
-        if not os.path.isfile(output):
-            np.save(output, data)
-        plt.clf()
+    return specgram 
 
+def make_hex8(hex_num):
+    """
+    Pads end of hex with 0s to make it length 8.
+    :param hex_num: Number to be padded
+    :return: padded hex number
+    """
+    for i in range(0, 8 - len(hex_num)):
+        hex_num += "0"
+    return hex_num
 
-def main(input_dir, output_dir):
-    if not input_dir.endswith("/"):
-        input_dir += "/"
-    if not output_dir.endswith("/"):
-        output_dir += "/"
-    if not os.path.isdir(output_dir):
-        print output_dir
-        os.makedirs(output_dir)
-    directories = os.listdir(input_dir)
-    directories.sort()
-    for d in directories:
-        print d
-        if os.path.isdir(input_dir + d + "/audio/"):
-            audio_dir = input_dir + d + "/audio/"
-            date = d.split("-")
-            date.reverse()
-            date = "-".join(date)
-            if "Org" in date:
-                index = date.index("Org")
-                date = date[:index] + date[index + 3:]
-            recordings = os.listdir(audio_dir)
-            recordings.sort()
-            for rec in recordings:
-                if rec.endswith(".wav") or rec.endswith(".flac") or rec.endswith(".mp3"):
-                    print (audio_dir + rec)
-                    file_time = os.path.splitext(rec)[0][:os.path.splitext(rec)[0].index("_")]
-                    temp_date, temp_time = Dates.add_seconds_to_date(date, file_time, 30)
-                    hex_num, hex_dir = Dates.to_hex(temp_date, temp_time)
-                    if "left" in rec:
-                        output = output_dir + hex_dir + hex_num + "_" + temp_date + "T" + temp_time + "_left.spec.npy"
-                    else:
-                        output = output_dir + hex_dir + hex_num + "_" + temp_date + "T" + temp_time + "_right.spec.npy"
-                    if not os.path.isfile(output):
-                        try:
-                            (bee_rate, bee_data) = get_data(audio_dir + rec)
-                            save_specgram_pkl(bee_data, date, file_time, rec, output_dir)
-                        except:
-                            print ("Error thrown when file was read")
+def get_starting_cols(start, channel, mp3_dirs): 
+    """
+    Sometimes audio files span multiple time frames and consequently, 
+    multiple spectrogram files. This function looks for an audio file 
+    directly before the start time and takes columns from the specrogram 
+    that fall after the starting time.
+    :param start: beginning time for the spectrogram being generated
+    :param channel: left or right (microphone for hive)
+    :param mp3_dirs: list of directories where file may be located
+    :return: columns falling after start time
+    """
+    file_start = None
+    for i in range(0, -60, -1):
+        i_hex = '{:08x}'.format(int(start, 16) + i) 
+        date, time = Dates.to_date('{:08x}'.format(int(start, 16) + i))
+        fname = get_fname(date, time, channel, mp3_dirs)
+        if fname is not None:
+            file_start = i_hex
+            break
+    if fname is not None:
+        col = int(start, 16) - int(file_start, 16) 
+        return get_specgram(fname)[:, col:]
+
+def get_fname(date, time, channel, mp3_dirs):
+    """
+    Locates file name for desired time and date.
+    :param date: date of desired file (YYYY-MM-DD)
+    :param time: time of desired file (HH:MM:SS) 
+    :param channel: left or right (microphone for hive)
+    :param mp3_dirs: list of directories where file may be located
+    """
+    date = date.split("-")
+    date.reverse()
+    date = "-".join(date)
+    fname = None
+    for d in mp3_dirs:
+        if os.path.isdir(d % date):
+            file_list = os.listdir(d % date)
+            if file_list is not None:
+                file_list.sort()
+                fname = binary_search(time, channel, file_list)
+                if fname is not None:
+                    fname = d % date + fname
+                    break
+    return fname
+
+def binary_search(time, channel, file_list):
+    """
+    Searches list of files from directory for the file 
+    associated with a desired time.
+    :param time: time of desired file (HH:MM:SS) 
+    :param channel: left or right (microphone for hive)
+    :param file_list: a sorted list of files from a directory.
+    :return: name of file for desired time
+    """
+    found = False
+    first = 0
+    last = len(file_list) - 1
+    fname = None
+    while first <= last and not found:
+        midpoint = (first + last) / 2
+        if time in file_list[midpoint] and channel in file_list[midpoint]:
+            fname = file_list[midpoint]
+            break
+        else:
+            if time < file_list[midpoint].split("_")[0]:
+                last = midpoint - 1
+            else:
+                first = midpoint + 1
+    return fname
+
+def main(start_date, start_time, pit, channel):
+    start, start_dir =  Dates.to_hex(start_date, start_time)  
+    start = make_hex8(start[:5])
+    mp3_dirs = ["/usr/local/bee/beemon/" + pit + "/%s/audio/", "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/%s/audio/"]
+    curr_date, curr_time = Dates.get_current_date()
+    curr_hex = Dates.to_hex(curr_date, curr_time)[0]
+    n = int(curr_hex[:5], 16) - int(start[:5], 16) + 1 
+    remaining_cols = get_starting_cols(start, channel, mp3_dirs)
+    for i in range(0, n): # All 4096 time blocks between start_date/start_time and current_date/current_time
+        intensities = np.empty((2049, 4096))
+        intensities[:] = np.NAN
+        if remaining_cols is not None:
+            intensities[:, :remaining_cols.shape[1]] = remaining_cols
+            remaining_cols = None
+        start_datetime = None
+        for j in range(0, 4096):  # There are 4096 seconds for each specgram
+            date, time = Dates.to_date('{:08x}'.format(int(start, 16) + (i * 4096) + j))
+            if start_datetime is None:
+                start_datetime = date + "T" + time
+            fname = get_fname(date, time, channel, mp3_dirs)
+            if fname is not None:
+                spec = get_specgram(fname)
+                if j + spec.shape[1] <= intensities.shape[1]:
+                    intensities[:, j:j + spec.shape[1]] = spec
+                else:
+                    cols = intensities[:, j:].shape[1]
+                    intensities[:, j:j + cols] = spec[:, :cols]
+                    remaining_cols = spec[:, cols:]
+                    print spec.shape, spec[:, :cols].shape, remaining_cols.shape
+        end_date, end_time = Dates.add_seconds_to_date(start_datetime.split('T')[0], start_datetime.split('T')[1], 4095)
+        end_datetime = end_date + "T" + end_time
+        # only creates file if audio files were found. (there are entries in intensities that are not equal to np.NaN)
+        if np.count_nonzero(~np.isnan(intensities)) > 0:
+            out_dir =  "/usr/local/bee/beemon/beeW/Luke/numpy_specs/%s/" % pit + start_dir
+            if not os.path.isdir(out_dir): 
+                os.makedirs(out_dir)
+            print out_dir + '{:08x}'.format(int(start, 16) + (i * 4096))[:5] + "_" + channel + ".npz"
+            print "Time frame:", start_datetime, "-", end_datetime, "\n"
+            np.savez_compressed(out_dir + '{:08x}'.format(int(start, 16) + (i * 4096))[:5] + "_" + channel + ".npz", 
+                                intensities=intensities, sample_rate=sample_rate)
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
