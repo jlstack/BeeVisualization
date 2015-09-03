@@ -24,6 +24,7 @@ import pickle
 import tempfile
 from mpl_toolkits.mplot3d import Axes3D
 import Dates
+import math
 
 '''
 This function looks on the path provided for data from
@@ -40,7 +41,10 @@ def audiolist_getter(path, pit, date=None, limit=None):
     if path == "/usr/local/bee/beemon/mp3/":
         if date is not None:
             path = path + pit + "/" + date + "/"
-            audiofiles = os.listdir(path)
+            try:
+                audiofiles = os.listdir(path)
+            except:
+                audiofiles = []
         else:
             path = path + pit + "/"
             audiofiles = []
@@ -59,7 +63,10 @@ def audiolist_getter(path, pit, date=None, limit=None):
     else:
         if date is not None:
             path = path + pit + "/" + date
-            audiofiles= os.listdir(path + "/audio/")
+            try:
+                audiofiles= os.listdir(path + "/audio/")
+            except:
+                audiofiles = []
         else:
             path = path + pit + "/"
             audiofiles = []
@@ -146,10 +153,18 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
         if os.path.isfile(fname):
             data = np.load(fname).item()
             combined_spec.append(data["intensities"])
-    combined_spec = np.array(combined_spec)
-    print(combined_spec.shape)
+    a = np.asarray(combined_spec)
+    new_spec = np.zeros((len(a),math.ceil(len(a[0])/2)))
+    for i in range(0,math.floor(len(a[0])/2)*2, 2):
+        b=np.mean(a[:,i:i+2], axis=1)
+        b = b.reshape((1,len(b)))
+        b = b.T
+        new_spec[:,i/2] = b.ravel()
+    if len(a[0]) % 2 != 0:
+        new_spec[:,-1] = a[:,-1].ravel()
+    print(new_spec.shape)
     print(time() - timer)
-    return combined_spec
+    return new_spec
 
 '''
 This function reads each file from the parsefiles list and gets the data
@@ -163,7 +178,7 @@ The date parameter is the day to get data from in the form DD-MM-YYYY.
 The dates parameter is the list of dates if one day was not chosen.
 The newdate parameter is the date in the format YYYY-MM-DD.
 '''
-def specgramdata_getter(parsefiles, path, pit, date, dates):
+def specgramdata_getter(parsefiles, path, pit, date, dates, newdate):
     count = 0
     save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
     data = []
@@ -204,18 +219,46 @@ def specgramdata_getter(parsefiles, path, pit, date, dates):
     return data
 
 '''
+This function gets the specgrams and plots them side by side for
+comparison.
+
+The parsefiles parameter is a list of the files to read in.
+The path parameter is the directory that has the wav files.
+The pit parameter is the pit to choose from.
+The date parameter is the day to get data from in the form DD-MM-YYYY.
+The dates parameter is the list of dates if one day was not chosen.
+The newdate parameter is the date in the format YYYY-MM-DD.
+
+'''
+def specgram_viewer(parsefiles, path, pit, date, dates, newdate):
+    spec1 = np.asarray(create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left"))
+    print("Got first specgram set")
+    spec2 = np.asarray(specgramdata_getter(parsefiles, path, pit, date, dates, newdate))
+    print("Got second specgram set")
+    fig = plt.figure(2)
+    for x in range(2):
+        ax = fig.add_subplot(1, 2, x)
+        plt.plot("spec" + str(x+1))
+    plt.show()
+    plt.close()
+
+'''
 This function gets the files to be factorized, and
 then does nonnegative matrix factorization on the periodograms of the wav file specgrams.
 
 The path parameter is the directory that has the wav files.
 The pit parameter is the pit to choose from.
+The hour parameter is the hour to get the data from.
+The components parameter is the number of components for NMF.
 The date parameter is the day to get data from.
 The limit parameter is the number of files to include.
 '''
-def NMF_dir(path, pit, date=None, limit=None):
+def NMF_dir(path, pit, hour, components = 5, date = None, limit = None):
     t0 = time()
+    hour = str(hour)
+    components = int(components)
     #Get the current directory for data storage, as well as getting the audio path based on input
-    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
+    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/10comp/"
     print("Reading audio files...")
     #Make sure the storage directories are there
     if not os.path.isdir("usr/local/bee/beemon/beeW/Chris/" + pit):
@@ -231,16 +274,16 @@ def NMF_dir(path, pit, date=None, limit=None):
         newdate = date.split('-')[::-1]
         newdate = '-'.join(newdate)
     dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
-    print("Files to parse: " + str(limit))
+    #specgram_viewer(parsefiles, path, pit, date, dates, newdate)
     #Get the recordings and parse them for clustering
     if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/" + date:
-        data = create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left")
+        data = create_specgrams(newdate, hour + ":00:00", newdate, hour + ":59:59", pit, "left")
     else:
         data = specgramdata_getter(parsefiles, path, pit, date, dates, newdate)
     #Actually do the NMF computation
     t2 = time()
     print("Data gathering complete. Doing nonnegative matrix factorization.")
-    estimator = decomposition.NMF(n_components = 50, init = 'nndsvdar', max_iter=10000, random_state = 327)
+    estimator = decomposition.NMF(n_components = components, init = 'nndsvdar', max_iter = 1000, nls_max_iter = 50000, random_state = 327, tol = 0.002)
     print("Fitting the model to your data...")
     print("This may take some time...")
     w = estimator.fit_transform(data)
@@ -250,7 +293,7 @@ def NMF_dir(path, pit, date=None, limit=None):
     #Save the dot product of the 2 matrices, the reconstruction error, the transformed data matrix, and the component matrix into a file called "NMFdata_xxx.npy"
     saveddata = [np.dot(w,h), estimator.reconstruction_err_, w, h]
     print("Saving results...")
-    pickle.dump(saveddata, open(save_dir + "/NMFdata_" + str(limit) + ".pkl", "wb"), protocol = 2)
+    pickle.dump(saveddata, open(save_dir + "NMFdata" + hour + "_" + str(components) + ".pkl", "wb"), protocol = 2)
     print("Done.")
     print(time() - t0)
 
@@ -280,7 +323,6 @@ def NMF_plot3d(path):
 Visualize the components of the factorized matrix in 2D space.
 
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
-
 The dims parameter is the number of dimensions to visualize.
 '''
 def NMF_plot2d(path, dims = 2):
@@ -318,42 +360,32 @@ def NMF_plot2d(path, dims = 2):
 Visualize the W matrix using 2D histograms.
 
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
-
 The dims parameter is the number of dimensions to visualize.
 '''
 def NMF_plotW(path, dims = 2):
      t0 = time()
+     date = path.split("/")[8]
+     t = (path.split("/")[10])[7:9]
      #Load the multiplied matrix
      pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
      components = pickledData[2]
-     dims = int(dims)
-     fig = plt.figure(dims + 1)
-     pos = 1
-     #Plot the number of dimensions, from dim 1 to provided parameter.
-     for y in range(dims):
-         print("Loading dimension " + str(y + 1) + ".")
-         for x in range(dims):
-             ax = fig.add_subplot(dims + 1, dims, pos)
-             pos += 1
-             if x != y:
-                 #Plot data for 2D histogram
-                 a, xlims, ylims = np.histogram2d(components[:,x], components[:,y], bins = 500)
-                 a = np.flipud(np.rot90(a))
-                 mesh = plt.pcolormesh(xlims, ylims, np.ma.masked_where(a == 0, a))
-             else:
-                 plt.hist(components[:,x], bins = 50)
-             yticks = ax.get_yticks()
-             ax.set_yticks(yticks[::2])
-             #Set the axis to scientific notation
-             ax.xaxis.get_major_formatter().set_powerlimits((0,1))
-             ax.yaxis.get_major_formatter().set_powerlimits((0,1))
-             plt.xticks(rotation = 40)
-     plt.tight_layout(pad = 0, w_pad = -1, h_pad = -1)
+     print(components.shape)
+     fig = plt.figure()
+     ax = fig.add_subplot(111)
+     lin = range(0, len(components))
+     plt.plot(lin, components[:, :dims])
+     ax.xaxis.set_ticks(np.arange(0, len(components), 250))
+     ax.xaxis.set_label_text("Seconds")
+     ax.yaxis.set_label_text("Intensity")
+     plt.xlim((0, len(components)))
+     #Limit the y-axis to the same scale for each subplot
+     maxht = np.amax(components[:, :dims])
+     if np.amax(maxht) < .001:
+         plt.ylim((0, maxht))
+     else:
+         plt.ylim((0, .001))
+     plt.title("Density Plots of W for " + str(date) + " " + str(t) + "th Hour", fontsize = 20)
      print("Time to graph items: " + str(time() - t0) + " sec.")
-     fig.get_axes()[0].annotate('2D Histograms of W', (0.5, 0.05), xycoords='figure fraction', ha='center', fontsize=20)
-     fig.subplots_adjust(right = 0.8)
-     cax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-     fig.colorbar(mesh, cax = cax)
      plt.show()
      plt.close()
 
@@ -361,39 +393,33 @@ def NMF_plotW(path, dims = 2):
 Visualize the H matrix of the NMF using a density plot.
 
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
-
 The dims parameter is the number of dimensions to visualize.
 '''
 def NMF_plotH(path, dims = 2):
     t0 = time()
+    date = path.split("/")[8]
+    t = (path.split("/")[10])[7:9]
     #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
     components = pickledData[3]
-    dims = int(dims)
-    fig = plt.figure(dims + 1)
-    pos = 1
-    factors = [num for num in range(1, int(dims / 2) + 1) if not dims % num] + [dims]
-    #Plot the number of dimensions, from dim 1 to provided parameter.
-    for x in range(dims):
-        print("Loading dimension " + str(x + 1) + ".")
-        ax = fig.add_subplot(dims/factors[int(len(factors)/2) - 1], dims/factors[int(len(factors) / 2)], pos)
-        pos += 1
-        #Plot density plots
-        den = stats.kde.gaussian_kde(components[:,x])
-        den.covariance_factor = lambda : .25
-        den._compute_covariance()
-        #lin = np.linspace(0, int(np.max(components[:,x])), 200)
-        lin = range(0, len(components))
-        plt.plot(lin, components[:,x])
-        #plt.plot(lin, den(lin))
-        #Set the axis to scientific notation
-        ax.xaxis.get_major_formatter().set_powerlimits((0,1))
-        ax.yaxis.get_major_formatter().set_powerlimits((0,1))
-        #Limit the y-axis to the same scale for each subplot
-        plt.ylim((0, 2500))
-    #Modify the layout so title is on bottom and graph size is maximized
-    plt.tight_layout(pad = 0, w_pad = -1, h_pad = -1)
-    fig.get_axes()[0].annotate('Density Plots of H', (0.5, 0.02), xycoords='figure fraction', ha='center', fontsize=20)
+    components = np.asarray(components)
+    components = components.T
+    print(components.shape)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    lin = range(0, len(components))
+    plt.plot(lin, components[:, :dims])
+    ax.xaxis.set_ticks([0, 200, 400, 600, 800, 1000])
+    ax.xaxis.set_label_text("Hertz")
+    ax.yaxis.set_label_text("Intensity")
+    plt.xlim((0, len(components)))
+    #Limit the y-axis to the same scale for each subplot
+    maxht = np.amax(components[:, :dims])
+    if np.amax(maxht) < .005:
+        plt.ylim((0, maxht))
+    else:
+        plt.ylim((0, .005))
+    plt.title("Density Plots of H for " + str(date) + " " + str(t) + "th Hour", fontsize = 20)
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
     plt.close()
@@ -404,20 +430,21 @@ Used to run through command prompt instead of python console.
 '''
 if __name__ == "__main__":
     passed = True
-    if len(sys.argv) == 3:
-        NMF_dir(sys.argv[1], sys.argv[2])
-    elif len(sys.argv) == 4:
-        if '-' in sys.argv[3]:
-            NMF_dir(sys.argv[1], sys.argv[2], date=sys.argv[3])
-        else:
-            NMF_dir(sys.argv[1], sys.argv[2], limit=sys.argv[3])
+    if len(sys.argv) == 4:
+        NMF_dir(sys.argv[1], sys.argv[2], sys.argv[3])
     elif len(sys.argv) == 5:
-        NMF_dir(sys.argv[1], sys.argv[2], date=sys.argv[3], limit=sys.argv[4])
+        if '-' in sys.argv[4]:
+            NMF_dir(sys.argv[1], sys.argv[2], sys.argv[3], date=sys.argv[4])
+        else:
+            NMF_dir(sys.argv[1], sys.argv[2], sys.argv[3], components=sys.argv[4])
+    elif len(sys.argv) == 6:
+        NMF_dir(sys.argv[1], sys.argv[2], sys.argv[3], components=sys.argv[4], date=sys.argv[5])
     else:
         print("Called with wrong number of parameters.")
         print("First parameter is the path to the files (REQUIRED)")
         print("Second parameter is the pit to analyze (REQUIRED)")
-        print("Third parameter is the date to analyze (OPTIONAL)")
-        print("Fourth parameter is the number of files desired (OPTIONAL)")
+        print("Third parameter is the hour to get data from (REQUIRED)")
+        print("Fourth parameter is the number of components (OPTIONAL)")
+        print("Fifth parameter is the date (OPTIONAL)")
 
 
