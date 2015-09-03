@@ -41,7 +41,10 @@ def audiolist_getter(path, pit, date=None, limit=None):
     if path == "/usr/local/bee/beemon/mp3/":
         if date is not None:
             path = path + pit + "/" + date + "/"
-            audiofiles = os.listdir(path)
+            try:
+                audiofiles = os.listdir(path)
+            except:
+                audiofiles = []
         else:
             path = path + pit + "/"
             audiofiles = []
@@ -60,7 +63,10 @@ def audiolist_getter(path, pit, date=None, limit=None):
     else:
         if date is not None:
             path = path + pit + "/" + date
-            audiofiles= os.listdir(path + "/audio/")
+            try:
+                audiofiles= os.listdir(path + "/audio/")
+            except:
+                audiofiles = []
         else:
             path = path + pit + "/"
             audiofiles = []
@@ -267,7 +273,6 @@ def NMF_dir(path, pit, hour, components = 5, date = None, limit = None):
         newdate = date.split('-')[::-1]
         newdate = '-'.join(newdate)
     dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
-    print("Files to parse: " + str(limit))
     #specgram_viewer(parsefiles, path, pit, date, dates, newdate)
     #Get the recordings and parse them for clustering
     if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/" + date:
@@ -287,7 +292,7 @@ def NMF_dir(path, pit, hour, components = 5, date = None, limit = None):
     #Save the dot product of the 2 matrices, the reconstruction error, the transformed data matrix, and the component matrix into a file called "NMFdata_xxx.npy"
     saveddata = [np.dot(w,h), estimator.reconstruction_err_, w, h]
     print("Saving results...")
-    pickle.dump(saveddata, open(save_dir + "NMFdata" + hour + "_" + str(limit) + ".pkl", "wb"), protocol = 2)
+    pickle.dump(saveddata, open(save_dir + "NMFdata" + hour + "_" + str(components) + ".pkl", "wb"), protocol = 2)
     print("Done.")
     print(time() - t0)
 
@@ -359,8 +364,10 @@ The date parameter is the date of the data.
 The t parameter is the time in which the data starts (for title purposes).
 The dims parameter is the number of dimensions to visualize.
 '''
-def NMF_plotW(path, date, t, dims = 2):
+def NMF_plotW(path, dims = 2):
      t0 = time()
+     date = path.split("/")[8]
+     t = (path.split("/")[10])[7:9]
      #Load the multiplied matrix
      pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
      components = pickledData[2]
@@ -375,11 +382,11 @@ def NMF_plotW(path, date, t, dims = 2):
      plt.xlim((0, len(components)))
      #Limit the y-axis to the same scale for each subplot
      maxht = np.amax(components[:, :dims])
-     if np.amax(maxht) < .0002:
+     if np.amax(maxht) < .001:
          plt.ylim((0, maxht))
      else:
-         plt.ylim((0, .0002))
-     plt.title("Density Plots of W for " + str(date) + " " + str(t), fontsize = 20)
+         plt.ylim((0, .001))
+     plt.title("Density Plots of W for " + str(date) + " " + str(t) + "th Hour", fontsize = 20)
      print("Time to graph items: " + str(time() - t0) + " sec.")
      plt.show()
      plt.close()
@@ -392,8 +399,10 @@ The date parameter is the date of the data.
 The t parameter is the time in which the data starts (for title purposes).
 The dims parameter is the number of dimensions to visualize.
 '''
-def NMF_plotH(path, date, t, dims = 2):
+def NMF_plotH(path, dims = 2):
     t0 = time()
+    date = path.split("/")[8]
+    t = (path.split("/")[10])[7:9]
     #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
     components = pickledData[3]
@@ -410,11 +419,11 @@ def NMF_plotH(path, date, t, dims = 2):
     plt.xlim((0, len(components)))
     #Limit the y-axis to the same scale for each subplot
     maxht = np.amax(components[:, :dims])
-    if np.amax(maxht) < .001:
+    if np.amax(maxht) < .005:
         plt.ylim((0, maxht))
     else:
-        plt.ylim((0, .001))
-    plt.title("Density Plots of H for " + str(date) + " " + str(t), fontsize = 20)
+        plt.ylim((0, .005))
+    plt.title("Density Plots of H for " + str(date) + " " + str(t) + "th Hour", fontsize = 20)
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
     plt.close()
