@@ -249,6 +249,7 @@ then does nonnegative matrix factorization on the periodograms of the wav file s
 The path parameter is the directory that has the wav files.
 The pit parameter is the pit to choose from.
 The hour parameter is the hour to get the data from.
+The components parameter is the number of components for NMF.
 The date parameter is the day to get data from.
 The limit parameter is the number of files to include.
 '''
@@ -322,7 +323,6 @@ def NMF_plot3d(path):
 Visualize the components of the factorized matrix in 2D space.
 
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
-
 The dims parameter is the number of dimensions to visualize.
 '''
 def NMF_plot2d(path, dims = 2):
@@ -360,8 +360,6 @@ def NMF_plot2d(path, dims = 2):
 Visualize the W matrix using 2D histograms.
 
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
-The date parameter is the date of the data.
-The t parameter is the time in which the data starts (for title purposes).
 The dims parameter is the number of dimensions to visualize.
 '''
 def NMF_plotW(path, dims = 2):
@@ -395,8 +393,6 @@ def NMF_plotW(path, dims = 2):
 Visualize the H matrix of the NMF using a density plot.
 
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
-The date parameter is the date of the data.
-The t parameter is the time in which the data starts (for title purposes).
 The dims parameter is the number of dimensions to visualize.
 '''
 def NMF_plotH(path, dims = 2):
