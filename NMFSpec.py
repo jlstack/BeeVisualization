@@ -375,7 +375,7 @@ def NMF_plotW(path, dims = 2):
      lin = range(0, len(components))
      plt.plot(lin, components[:, :dims])
      ax.xaxis.set_ticks(np.arange(0, len(components), 250))
-     ax.xaxis.set_label_text("Seconds")
+     ax.xaxis.set_label_text("Time in Seconds")
      ax.yaxis.set_label_text("Intensity")
      plt.xlim((0, len(components)))
      #Limit the y-axis to the same scale for each subplot
@@ -410,7 +410,7 @@ def NMF_plotH(path, dims = 2):
     lin = range(0, len(components))
     plt.plot(lin, components[:, :dims])
     ax.xaxis.set_ticks([0, 200, 400, 600, 800, 1000])
-    ax.xaxis.set_label_text("Hertz")
+    ax.xaxis.set_label_text("Frequencies in Hertz")
     ax.yaxis.set_label_text("Intensity")
     plt.xlim((0, len(components)))
     #Limit the y-axis to the same scale for each subplot
