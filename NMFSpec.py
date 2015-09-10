@@ -78,6 +78,7 @@ def audiolist_getter(path, pit, date=None, limit=None):
             limit = len(audiofiles)
         limit = int(limit)
         parsefiles = audiofiles[:limit]
+        parsefiles = sorted(parsefiles)
     return dates, parsefiles, limit, path
 
 '''
@@ -155,7 +156,8 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
             combined_spec.append(data["intensities"])
     a = np.asarray(combined_spec)
     new_spec = np.zeros((len(a),math.ceil(len(a[0])/2)))
-    for i in range(0,math.floor(len(a[0])/2)*2, 2):
+    newColumns = range(0,math.floor(len(a[0])/2)*2, 2)
+    for i in newColumns:
         b=np.mean(a[:,i:i+2], axis=1)
         b = b.reshape((1,len(b)))
         b = b.T
@@ -179,11 +181,16 @@ The dates parameter is the list of dates if one day was not chosen.
 The newdate parameter is the date in the format YYYY-MM-DD.
 '''
 def specgramdata_getter(parsefiles, path, pit, date, dates, newdate):
-    count = 0
     save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/"
+    if not os.path.isdir(save_dir + "Left/"):
+        os.makedirs(save_dir + "Left/")
+    if not os.path.isdir(save_dir + "Right/"):
+        os.makedirs(save_dir + "Right/")
+    count = 0
     data = []
     start = time()
-    for recording in range(len(parsefiles)):
+    numFiles = range(33)
+    for recording in numFiles:
         if count % 100 == 0:
             print(str(count) + " audio files read!")
         try:
@@ -212,7 +219,8 @@ def specgramdata_getter(parsefiles, path, pit, date, dates, newdate):
                 np.save(save_dir + "Right/" + dates[recording] + '_' + parsefiles[recording], pxx)
         count += 1
         #Append it to the list of data
-        for index in range(pxx.shape[1]):
+        columns = range(pxx.shape[1])
+        for index in columns:
             data.append(pxx[:,index])
     print(time() - start)
     print("Number of periodograms: " + str(len(data)))
@@ -231,14 +239,17 @@ The newdate parameter is the date in the format YYYY-MM-DD.
 
 '''
 def specgram_viewer(parsefiles, path, pit, date, dates, newdate):
-    spec1 = np.asarray(create_specgrams(newdate, "00:00:00", newdate, "23:59:59", pit, "left"))
+    spec1 = np.asarray(create_specgrams(newdate, "00:00:00", newdate, "00:59:59", pit, "left"))
     print("Got first specgram set")
     spec2 = np.asarray(specgramdata_getter(parsefiles, path, pit, date, dates, newdate))
     print("Got second specgram set")
-    fig = plt.figure(2)
+    fig = plt.figure()
     for x in range(2):
         ax = fig.add_subplot(1, 2, x)
-        plt.plot("spec" + str(x+1))
+        if x == 0:
+            ax.plot(spec1[:,0])
+        else:
+            ax.plot(spec2[:,0])
     plt.show()
     plt.close()
 
@@ -258,23 +269,19 @@ def NMF_dir(path, pit, hour, components = 5, date = None, limit = None):
     hour = str(hour)
     components = int(components)
     #Get the current directory for data storage, as well as getting the audio path based on input
-    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/10comp/"
+    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + str(date) + "/" + str(components) + "comp/"
     print("Reading audio files...")
     #Make sure the storage directories are there
     if not os.path.isdir("usr/local/bee/beemon/beeW/Chris/" + pit):
         os.makedirs("usr/local/bee/beemon/beeW/Chris/" + pit)
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
-    if not os.path.isdir(save_dir + "Left/"):
-        os.makedirs(save_dir + "Left/")
-    if not os.path.isdir(save_dir + "Right/"):
-        os.makedirs(save_dir + "Right/")
     if date is not None:
         date = str(date)
         newdate = date.split('-')[::-1]
         newdate = '-'.join(newdate)
     dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
-    #specgram_viewer(parsefiles, path, pit, date, dates, newdate)
+    specgram_viewer(parsefiles, path, pit, date, dates, newdate)
     #Get the recordings and parse them for clustering
     if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/" + date:
         data = create_specgrams(newdate, hour + ":00:00", newdate, hour + ":59:59", pit, "left")
@@ -362,10 +369,11 @@ Visualize the W matrix using 2D histograms.
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
 The dims parameter is the number of dimensions to visualize.
 '''
-def NMF_plotW(path, dims = 2):
+def NMF_plotW(pit, date, hour, comp, dims = 2):
      t0 = time()
-     date = path.split("/")[8]
-     t = (path.split("/")[10])[7:9]
+     path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + date + "/" + comp + "comp/NMFdata" + hour + "_" + comp + ".pkl"
+     #date = path.split("/")[8]
+     #t = (path.split("/")[10])[7:9]
      #Load the multiplied matrix
      pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
      components = pickledData[2]
@@ -380,11 +388,11 @@ def NMF_plotW(path, dims = 2):
      plt.xlim((0, len(components)))
      #Limit the y-axis to the same scale for each subplot
      maxht = np.amax(components[:, :dims])
-     if np.amax(maxht) < .001:
+     if np.amax(maxht) < .002:
          plt.ylim((0, maxht))
      else:
-         plt.ylim((0, .001))
-     plt.title("Density Plots of W for " + str(date) + " " + str(t) + "th Hour", fontsize = 20)
+         plt.ylim((0, .002))
+     plt.title("Density Plots of W for " + str(date) + " Hour " + str(t), fontsize = 20)
      print("Time to graph items: " + str(time() - t0) + " sec.")
      plt.show()
      plt.close()
@@ -419,7 +427,7 @@ def NMF_plotH(path, dims = 2):
         plt.ylim((0, maxht))
     else:
         plt.ylim((0, .005))
-    plt.title("Density Plots of H for " + str(date) + " " + str(t) + "th Hour", fontsize = 20)
+    plt.title("Density Plots of H for " + str(date) + " Hour " + str(t), fontsize = 20)
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
     plt.close()
