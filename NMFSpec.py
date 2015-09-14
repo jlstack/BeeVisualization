@@ -392,7 +392,7 @@ def NMF_plotW(pit, date, hour, comp, dims = 2):
          plt.ylim((0, maxht))
      else:
          plt.ylim((0, .002))
-     plt.title("Density Plots of W for " + str(date) + " Hour " + str(t), fontsize = 20)
+     plt.title("Density Plots of W for " + str(date) + " Hour " + str(hour), fontsize = 20)
      print("Time to graph items: " + str(time() - t0) + " sec.")
      plt.show()
      plt.close()
