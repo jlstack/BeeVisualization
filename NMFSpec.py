@@ -372,8 +372,6 @@ The dims parameter is the number of dimensions to visualize.
 def NMF_plotW(pit, date, hour, comp, dims = 2):
      t0 = time()
      path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + date + "/" + comp + "comp/NMFdata" + hour + "_" + comp + ".pkl"
-     #date = path.split("/")[8]
-     #t = (path.split("/")[10])[7:9]
      #Load the multiplied matrix
      pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
      components = pickledData[2]
@@ -403,10 +401,9 @@ Visualize the H matrix of the NMF using a density plot.
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
 The dims parameter is the number of dimensions to visualize.
 '''
-def NMF_plotH(path, dims = 2):
+def NMF_plotH(pit, date, hour, comp, dims = 2):
     t0 = time()
-    date = path.split("/")[8]
-    t = (path.split("/")[10])[7:9]
+    path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + date + "/" + comp + "comp/NMFdata" + hour + "_" + comp + ".pkl"
     #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
     components = pickledData[3]
@@ -427,7 +424,7 @@ def NMF_plotH(path, dims = 2):
         plt.ylim((0, maxht))
     else:
         plt.ylim((0, .005))
-    plt.title("Density Plots of H for " + str(date) + " Hour " + str(t), fontsize = 20)
+    plt.title("Density Plots of H for " + str(date) + " Hour " + str(hour), fontsize = 20)
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
     plt.close()
