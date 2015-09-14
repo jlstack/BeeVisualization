@@ -25,6 +25,7 @@ import tempfile
 from mpl_toolkits.mplot3d import Axes3D
 import Dates
 import math
+from datetime import datetime
 
 '''
 This function looks on the path provided for data from
@@ -123,6 +124,17 @@ def audiodata_getter(path, date, filedate, filename, index):
         except:
             print(filename + " corrupted or not audio file.")
 
+def make_hex8(hex_num):
+    """
+    Pads end of hex with 0s to make it length 8.
+    :param hex_num: Number to be padded
+    :return: padded hex number
+    """
+    for i in range(0, 8 - len(hex_num)):
+        hex_num += "0"
+    return hex_num
+
+
 '''
 This function is designed to get the specgrams from Luke's database of specgrams.
 Then, the function combines them into one 2D numpy array for factorization.
@@ -139,6 +151,7 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     """
     Ex: python create_specgram.py 2015-05-05 00:00:00 2015-05-05 00:00:00 pit1 left
     """
+    '''
     spec_dir = "/usr/local/bee/beemon/beeW/Luke/numpy_specs2/"
     timer = time()
     combined_spec = []
@@ -154,18 +167,53 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
         if os.path.isfile(fname):
             data = np.load(fname).item()
             combined_spec.append(data["intensities"])
+            '''
+    start_datetime = datetime.now()
+    spec_dir = "/usr/local/bee/beemon/beeW/Luke/numpy_specs/%s/"
+    """
+    Ex: 2015-05-05 00:00:00 2015-05-05 00:00:00 pit1 left
+    """
+    start_hex, start_dir = Dates.to_hex(start_date, start_time)
+    end_hex, end_dir = Dates.to_hex(end_date, end_time)
+    cols = int(end_hex, 16) - int(start_hex, 16)
+    combined_spec = np.empty((2049, cols))
+    combined_spec[:] = np.NaN
+    for i in range(int(start_hex[:5], 16), int(end_hex[:5], 16) + 1):
+        i_hex = '{:05x}'.format(i)
+        d = '/'.join(i_hex) + '/'
+        if os.path.isfile(spec_dir % pit + d + i_hex + '_' + channel + '.npz'):
+            print(spec_dir % pit + d + i_hex + '_' + channel + '.npz')
+            npz_file = np.load(spec_dir % pit + d + i_hex + '_' + channel + '.npz')
+            if start_hex[:5] == end_hex[:5] and start_hex[:5] == i_hex:
+                start_col = int(start_hex, 16) - int(make_hex8(start_hex[:5]), 16)
+                end_col = int(end_hex, 16) - int(make_hex8(start_hex[:5]), 16)
+                npz_file['intensities'][:, start_col:end_col + 1]
+                combined_spec[:, :(end_col - start_col)] = npz_file['intensities'][:, start_col:end_col]
+            elif start_hex[:5] == i_hex:
+                start_col = int(start_hex, 16) - int(make_hex8(start_hex[:5]), 16)
+                end_col = npz_file['intensities'][:, start_col:].shape[1]
+                combined_spec[:, 0:end_col] = npz_file['intensities'][:, start_col:]
+            elif end_hex[:5] == i_hex:
+                start_col = int(make_hex8(i_hex), 16) - int(start_hex, 16)
+                end_col = int(end_hex, 16) - int(make_hex8(i_hex), 16)
+                combined_spec[:, start_col:] = npz_file['intensities'][:, :end_col]
+            else:
+                start_col = int(make_hex8(i_hex), 16) - int(start_hex, 16)
+                end_col = npz_file['intensities'].shape[1]
+                combined_spec[:, start_col:start_col + end_col] = npz_file['intensities'][:, :]
+            npz_file.close()
+    print("time to retrieve data:", datetime.now() - start_datetime)
     a = np.asarray(combined_spec)
-    new_spec = np.zeros((len(a),math.ceil(len(a[0])/2)))
-    newColumns = range(0,math.floor(len(a[0])/2)*2, 2)
-    for i in newColumns:
-        b=np.mean(a[:,i:i+2], axis=1)
-        b = b.reshape((1,len(b)))
+    new_spec = np.zeros((math.ceil(len(a)/2), len(a[0])))
+    newRows = range(0,math.floor(len(a)/2)*2, 2)
+    for i in newRows:
+        b=np.mean(a[i:i+2, :], axis=0)
+        b = b.reshape((len(b), 1))
         b = b.T
-        new_spec[:,i/2] = b.ravel()
-    if len(a[0]) % 2 != 0:
-        new_spec[:,-1] = a[:,-1].ravel()
+        new_spec[i/2, :] = b.ravel()
+    if len(a) % 2 != 0:
+        new_spec[-1,:] = a[-1,:].ravel()
     print(new_spec.shape)
-    print(time() - timer)
     return new_spec
 
 '''
@@ -239,7 +287,7 @@ The newdate parameter is the date in the format YYYY-MM-DD.
 
 '''
 def specgram_viewer(parsefiles, path, pit, date, dates, newdate):
-    spec1 = np.asarray(create_specgrams(newdate, "00:00:00", newdate, "00:59:59", pit, "left"))
+    spec1 = np.asarray(create_specgrams("2015-05-01", "00:00:00", "2015-05-07", "23:59:59", pit, "left"))
     print("Got first specgram set")
     spec2 = np.asarray(specgramdata_getter(parsefiles, path, pit, date, dates, newdate))
     print("Got second specgram set")
