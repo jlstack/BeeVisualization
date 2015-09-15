@@ -80,6 +80,7 @@ def audiolist_getter(path, pit, date=None, limit=None):
         limit = int(limit)
         parsefiles = audiofiles[:limit]
         parsefiles = sorted(parsefiles)
+        print(path)
     return dates, parsefiles, limit, path
 
 '''
@@ -124,16 +125,15 @@ def audiodata_getter(path, date, filedate, filename, index):
         except:
             print(filename + " corrupted or not audio file.")
 
+"""
+Pads end of hex with 0s to make it length 8.  The padded number is returned.
+
+The hex_num parameter is the number to be padded
+"""
 def make_hex8(hex_num):
-    """
-    Pads end of hex with 0s to make it length 8.
-    :param hex_num: Number to be padded
-    :return: padded hex number
-    """
     for i in range(0, 8 - len(hex_num)):
         hex_num += "0"
     return hex_num
-
 
 '''
 This function is designed to get the specgrams from Luke's database of specgrams.
@@ -149,30 +149,10 @@ The channel parameter is left or right mic (ALWAYS left for pit2).
 '''
 def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     """
-    Ex: python create_specgram.py 2015-05-05 00:00:00 2015-05-05 00:00:00 pit1 left
-    """
-    '''
-    spec_dir = "/usr/local/bee/beemon/beeW/Luke/numpy_specs2/"
-    timer = time()
-    combined_spec = []
-    start_hex, start_dir = Dates.to_hex(start_date, start_time)
-    end_hex, end_dir = Dates.to_hex(end_date, end_time)
-    start_int = int(start_hex, 16)
-    end_int = int(end_hex, 16)
-    for i in range(start_int, end_int+1):
-        i_hex = '{:08x}'.format(i)
-        i_dir = "/".join(i_hex[:-1]) + "/"
-        hex_date, hex_time = Dates.to_date(i_hex)
-        fname = spec_dir + pit + "/" + i_dir + i_hex + "_" + hex_date + "T" + hex_time + "_" + channel + ".spec.npy"
-        if os.path.isfile(fname):
-            data = np.load(fname).item()
-            combined_spec.append(data["intensities"])
-            '''
-    start_datetime = datetime.now()
-    spec_dir = "/usr/local/bee/beemon/beeW/Luke/numpy_specs/%s/"
-    """
     Ex: 2015-05-05 00:00:00 2015-05-05 00:00:00 pit1 left
     """
+    start_datetime = datetime.now()
+    spec_dir = "/usr/local/bee/beemon/beeW/Luke/numpy_specs/%s/"
     start_hex, start_dir = Dates.to_hex(start_date, start_time)
     end_hex, end_dir = Dates.to_hex(end_date, end_time)
     cols = int(end_hex, 16) - int(start_hex, 16)
@@ -213,8 +193,38 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
         new_spec[i/2, :] = b.ravel()
     if len(a) % 2 != 0:
         new_spec[-1,:] = a[-1,:].ravel()
-    print(new_spec.shape)
+    new_spec = new_spec[:, ~np.all(np.isnan(new_spec), axis=0)]
     return new_spec
+
+'''
+This function is designed to get the specgrams from Luke's database of specgrams.
+Then, the function combines them into one 2D numpy array for factorization.
+This array is returned.
+
+The start_date parameter is the date of the first file.
+The start_time parameter is the start time of the first file.
+The end_date parameter is the date of the last file.
+The end_time parameter is the start time of the last file.
+The pit parameter is the pit to choose from.
+The channel parameter is left or right mic (ALWAYS left for pit2).
+'''
+def old_create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
+    spec_dir = "/usr/local/bee/beemon/beeW/Luke/numpy_specs2/"
+    timer = time()
+    combined_spec = []
+    start_hex, start_dir = Dates.to_hex(start_date, start_time)
+    end_hex, end_dir = Dates.to_hex(end_date, end_time)
+    start_int = int(start_hex, 16)
+    end_int = int(end_hex, 16)
+    for i in range(start_int, end_int+1):
+        i_hex = '{:08x}'.format(i)
+        i_dir = "/".join(i_hex[:-1]) + "/"
+        hex_date, hex_time = Dates.to_date(i_hex)
+        fname = spec_dir + pit + "/" + i_dir + i_hex + "_" + hex_date + "T" + hex_time + "_" + channel + ".spec.npy"
+        if os.path.isfile(fname):
+            data = np.load(fname).item()
+            combined_spec.append(data["intensities"])
+    return combined_spec
 
 '''
 This function reads each file from the parsefiles list and gets the data
@@ -287,7 +297,7 @@ The newdate parameter is the date in the format YYYY-MM-DD.
 
 '''
 def specgram_viewer(parsefiles, path, pit, date, dates, newdate):
-    spec1 = np.asarray(create_specgrams("2015-05-01", "00:00:00", "2015-05-07", "23:59:59", pit, "left"))
+    spec1 = np.asarray(create_specgrams(newdate, "00:00:00", newdate, "00:59:59", pit, "left"))
     print("Got first specgram set")
     spec2 = np.asarray(specgramdata_getter(parsefiles, path, pit, date, dates, newdate))
     print("Got second specgram set")
@@ -329,7 +339,7 @@ def NMF_dir(path, pit, hour, components = 5, date = None, limit = None):
         newdate = date.split('-')[::-1]
         newdate = '-'.join(newdate)
     dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
-    specgram_viewer(parsefiles, path, pit, date, dates, newdate)
+    #specgram_viewer(parsefiles, path, pit, date, dates, newdate)
     #Get the recordings and parse them for clustering
     if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/" + date:
         data = create_specgrams(newdate, hour + ":00:00", newdate, hour + ":59:59", pit, "left")
@@ -351,6 +361,137 @@ def NMF_dir(path, pit, hour, components = 5, date = None, limit = None):
     pickle.dump(saveddata, open(save_dir + "NMFdata" + hour + "_" + str(components) + ".pkl", "wb"), protocol = 2)
     print("Done.")
     print(time() - t0)
+
+"""
+This function computes NMF on a time interval.  The 2D matrix of data used to compute NMF is returned.
+
+The start_date parameter is the date of the first file.
+The start_time parameter is the start time of the first file.
+The end_date parameter is the date of the last file.
+The end_time parameter is the start time of the last file.
+The pit parameter is the pit to choose from.
+The channel parameter is left or right mic (ALWAYS left for pit2).
+The components parameter is the number of components for the nonnegative matrix factorization.
+"""
+def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, components):
+    t0 = time()
+    newstart_date = start_date.split('-')[::-1]
+    newstart_date = '-'.join(newstart_date)
+    newend_date = end_date.split('-')[::-1]
+    newend_date = '-'.join(newend_date)
+    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + newstart_date + "/" + components + "comp/"
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+    components = int(components)
+    data = create_specgrams(start_date, start_time, end_date, end_time, pit, channel)
+    #data = np.asarray(data)
+    #data = np.transpose(data)
+    data = data.T
+    print(data.shape)
+    t1 = time()
+    print("Data gathering complete. Doing nonnegative matrix factorization.")
+    estimator = decomposition.NMF(n_components = components, init = 'nndsvdar', max_iter = 1000, nls_max_iter = 50000, random_state = 327, tol = 0.002)
+    print("Fitting the model to your data...")
+    print("This may take some time...")
+    w = estimator.fit_transform(data)
+    h = estimator.components_
+    t2 = time()
+    print(t2 - t1)
+    saveddata = [np.dot(w,h), estimator.reconstruction_err_, w, h]
+    print("Saving results...")
+    pickle.dump(saveddata, open(save_dir + "NMFdata_" + start_time+ "_" + newend_date + "_" + end_time + ".pkl", "wb"), protocol = 2)
+    print("Done.")
+    print(time() - t0)
+    return data
+
+"""
+This function takes the two 'clusters' of data at approximately - Hz and - Hz, and averages the intensities
+for the two 'clusters'.  Then, the two lines are plotted for the time interval given.
+
+The start_date parameter is the date of the first file.
+The start_time parameter is the start time of the first file.
+The end_date parameter is the date of the last file.
+The end_time parameter is the start time of the last file.
+The pit parameter is the pit to choose from.
+The channel parameter is left or right mic (ALWAYS left for pit2).
+"""
+def avg_frequencies(start_date, start_time, end_date, end_time, pit, channel):
+    data = NMF_interval(start_date, start_time, end_date, end_time, pit, channel)
+    print(data)
+
+'''
+Visualize the W matrix using 2D histograms.
+
+The pit parameter is the pit to choose from.
+The st_date parameter is the date of the first file.
+The end_date parameter is the date of the last file.
+The end_time parameter is the start time of the last file.
+The comp parameter is the number of components.
+The dims parameter is the number of dimensions to visualize.
+'''
+def NMF_intplotW(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
+     t0 = time()
+     path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + st_date + "/" + comp + "comp/NMFdata_" + st_time + '_' + end_date + "_" + end_time + ".pkl"
+     #Load the multiplied matrix
+     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
+     components = pickledData[2]
+     print(components.shape)
+     fig = plt.figure()
+     ax = fig.add_subplot(111)
+     lin = range(0, len(components))
+     plt.plot(lin, components[:, :dims])
+     ax.xaxis.set_ticks(np.arange(0, len(components), int((len(components)-(len(components)%100))/5)))
+     ax.xaxis.set_label_text("Time in Seconds")
+     ax.yaxis.set_label_text("Intensity")
+     plt.xlim((0, len(components)))
+     #Limit the y-axis to the same scale for each subplot
+     maxht = np.amax(components[:, :dims])
+     if np.amax(maxht) < .002:
+         plt.ylim((0, maxht))
+     else:
+         plt.ylim((0, .002))
+     plt.title("Density Plots of W for " + st_date + " " + st_time + " to " + end_date + " " + end_time, fontsize = 20)
+     print("Time to graph items: " + str(time() - t0) + " sec.")
+     plt.show()
+     plt.close()
+
+'''
+Visualize the H matrix of the NMF using a density plot.
+
+The pit parameter is the pit to choose from.
+The st_date parameter is the date of the first file.
+The end_date parameter is the date of the last file.
+The end_time parameter is the start time of the last file.
+The comp parameter is the number of components.
+The dims parameter is the number of dimensions to visualize.
+'''
+def NMF_intplotH(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
+    t0 = time()
+    path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + st_date + "/" + comp + "comp/NMFdata_" + st_time + '_' + end_date + "_" + end_time + ".pkl"
+    #Load the multiplied matrix
+    pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
+    components = pickledData[3]
+    components = np.asarray(components)
+    components = components.T
+    print(components.shape)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    lin = range(0, len(components))
+    plt.plot(lin, components[:, :dims])
+    ax.xaxis.set_ticks([0, 200, 400, 600, 800, 1000])
+    ax.xaxis.set_label_text("Frequencies in Hertz")
+    ax.yaxis.set_label_text("Intensity")
+    plt.xlim((0, len(components)))
+    #Limit the y-axis to the same scale for each subplot
+    maxht = np.amax(components[:, :dims])
+    if np.amax(maxht) < .005:
+        plt.ylim((0, maxht))
+    else:
+        plt.ylim((0, .005))
+    plt.title("Density Plots of H for " + st_date + " " + st_time +       " to " + end_date + " " + end_time, fontsize = 20)
+    print("Time to graph items: " + str(time() - t0) + " sec.")
+    plt.show()
+    plt.close()
 
 '''
 Visualize the components of the factorized matrix in 3D space.
@@ -417,7 +558,7 @@ Visualize the W matrix using 2D histograms.
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
 The dims parameter is the number of dimensions to visualize.
 '''
-def NMF_plotW(pit, date, hour, comp, dims = 2):
+def NMF_oldplotW(pit, date, hour, comp, dims = 2):
      t0 = time()
      path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + date + "/" + comp + "comp/NMFdata" + hour + "_" + comp + ".pkl"
      #Load the multiplied matrix
@@ -428,7 +569,7 @@ def NMF_plotW(pit, date, hour, comp, dims = 2):
      ax = fig.add_subplot(111)
      lin = range(0, len(components))
      plt.plot(lin, components[:, :dims])
-     ax.xaxis.set_ticks(np.arange(0, len(components), 250))
+     ax.xaxis.set_ticks(np.arange(0, len(components), int((len(components)-(len(components)%100))/5)))
      ax.xaxis.set_label_text("Time in Seconds")
      ax.yaxis.set_label_text("Intensity")
      plt.xlim((0, len(components)))
@@ -449,7 +590,7 @@ Visualize the H matrix of the NMF using a density plot.
 The path parameter is the path to the NMFdata_xx.pkl file to visualize.
 The dims parameter is the number of dimensions to visualize.
 '''
-def NMF_plotH(pit, date, hour, comp, dims = 2):
+def NMF_oldplotH(pit, date, hour, comp, dims = 2):
     t0 = time()
     path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + date + "/" + comp + "comp/NMFdata" + hour + "_" + comp + ".pkl"
     #Load the multiplied matrix
@@ -477,27 +618,45 @@ def NMF_plotH(pit, date, hour, comp, dims = 2):
     plt.show()
     plt.close()
 
-
 '''
 Used to run through command prompt instead of python console.
 '''
-if __name__ == "__main__":
-    passed = True
-    if len(sys.argv) == 4:
-        NMF_dir(sys.argv[1], sys.argv[2], sys.argv[3])
-    elif len(sys.argv) == 5:
-        if '-' in sys.argv[4]:
-            NMF_dir(sys.argv[1], sys.argv[2], sys.argv[3], date=sys.argv[4])
+def main():
+    answer = input("Are you using a time interval?")
+    if 'n' in answer or 'N' in answer:
+        params = input("Put in your parameters.")
+        if len(params) == 3:
+            NMF_dir(params[0], params[1], params[2])
+        elif len(params) == 4:
+            if '-' in params[3]:
+                NMF_dir(params[0], params[1], params[2], date=params[3])
+            else:
+                NMF_dir(params[0], params[1], params[2], components=params[3])
+        elif len(params) == 5:
+            NMF_dir(params[0], params[1], params[2], components=params[3], date=params[4])
+        elif len(params) == 6:
+            NMF_dir(params[0], params[1], params[2], components=params[3], date=params[4], limit=params[5])
         else:
-            NMF_dir(sys.argv[1], sys.argv[2], sys.argv[3], components=sys.argv[4])
-    elif len(sys.argv) == 6:
-        NMF_dir(sys.argv[1], sys.argv[2], sys.argv[3], components=sys.argv[4], date=sys.argv[5])
+            print("Called with wrong number of parameters.")
+            print("First parameter is the path to the files (REQUIRED)")
+            print("Second parameter is the pit to analyze (REQUIRED)")
+            print("Third parameter is the hour to get data from (REQUIRED)")
+            print("Fourth parameter is the number of components (OPTIONAL)")
+            print("Fifth parameter is the date (OPTIONAL)")
+            print("Sixth parameter is the limit for number of files (OPTIONAL)")
+            main()
+    elif 'y' in answer or 'Y' in answer:
+        print("PARAMETERS ARE: Start Date, Start Time, End Date, End Time, Pit, Channel, and Components")
+        print("Dates are in the format: YYYY-MM-DD, Times are in the format: HH:MM:SS")
+        print("Pit is in the format: pitX, where X is the pit no., Channel is left or right, Components is an int")
+        params = input("Put in the 7 parameters separated by spaces.")
+        sd, st, ed, et, pit, chan, comp = params.split()
+        NMF_interval(sd, st, ed, et, pit, chan, comp)
     else:
-        print("Called with wrong number of parameters.")
-        print("First parameter is the path to the files (REQUIRED)")
-        print("Second parameter is the pit to analyze (REQUIRED)")
-        print("Third parameter is the hour to get data from (REQUIRED)")
-        print("Fourth parameter is the number of components (OPTIONAL)")
-        print("Fifth parameter is the date (OPTIONAL)")
+        print("UNCLEAR. Please type an answer with a 'y' in it for yes, or a 'n' in it for no.")
+        print("But, do not do both.")
+        main()
 
+if __name__ == "__main__":
+    main()
 
