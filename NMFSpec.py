@@ -372,8 +372,9 @@ The end_time parameter is the start time of the last file.
 The pit parameter is the pit to choose from.
 The channel parameter is left or right mic (ALWAYS left for pit2).
 The components parameter is the number of components for the nonnegative matrix factorization.
+The save parameter is whether or not to save. Default is false.
 """
-def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, components):
+def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, components, save = False):
     t0 = time()
     newstart_date = start_date.split('-')[::-1]
     newstart_date = '-'.join(newstart_date)
@@ -384,8 +385,6 @@ def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, compo
         os.makedirs(save_dir)
     components = int(components)
     data = create_specgrams(start_date, start_time, end_date, end_time, pit, channel)
-    #data = np.asarray(data)
-    #data = np.transpose(data)
     data = data.T
     print(data.shape)
     t1 = time()
@@ -398,26 +397,44 @@ def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, compo
     t2 = time()
     print(t2 - t1)
     saveddata = [np.dot(w,h), estimator.reconstruction_err_, w, h]
-    print("Saving results...")
-    pickle.dump(saveddata, open(save_dir + "NMFdata_" + start_time+ "_" + newend_date + "_" + end_time + ".pkl", "wb"), protocol = 2)
+    if save is True:
+        print("Saving results...")
+        pickle.dump(saveddata, open(save_dir + "NMFdata_" + start_time+ "_" + newend_date + "_" + end_time + ".pkl", "wb"), protocol = 2)
     print("Done.")
     print(time() - t0)
-    return data
 
 """
 This function takes the two 'clusters' of data at approximately - Hz and - Hz, and averages the intensities
 for the two 'clusters'.  Then, the two lines are plotted for the time interval given.
 
+The pit parameter is the pit to choose from.
 The start_date parameter is the date of the first file.
 The start_time parameter is the start time of the first file.
 The end_date parameter is the date of the last file.
 The end_time parameter is the start time of the last file.
-The pit parameter is the pit to choose from.
 The channel parameter is left or right mic (ALWAYS left for pit2).
+The components parameter is the number of components.
 """
-def avg_frequencies(start_date, start_time, end_date, end_time, pit, channel):
-    data = NMF_interval(start_date, start_time, end_date, end_time, pit, channel)
-    print(data)
+def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, components):
+    newstart_date = start_date.split('-')[::-1]
+    newstart_date = '-'.join(newstart_date)
+    newend_date = end_date.split('-')[::-1]
+    newend_date = '-'.join(newend_date)
+    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + components + "comp/"
+    #path = save_dir + "NMFdata_" + start_time + "_" + end_date + "_" + end_time + ".pkl"
+    for i in range(24):
+        intstr = "%02d" % i
+        path = save_dir + "NMFdata_" + intstr + ":00:00_" + end_date + "_" + intstr + ":59:59" + ".pkl"
+        if not os.path.isfile(path):
+            NMF_interval(newstart_date, intstr + ":00:00", newstart_date, intstr + ":59:59", pit, channel, components, True)
+        pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
+        H = pickledData[3]
+        H = np.asarray(H)
+        H = H.T
+        print(H.shape)
+        intstr = "%02d" % i
+        print(intstr)
+        NMF_intplotW(pit, start_date, intstr + ":00:00", start_date, intstr + ":59:59", components, 5)
 
 '''
 Visualize the W matrix using 2D histograms.
