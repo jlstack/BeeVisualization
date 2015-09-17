@@ -421,7 +421,7 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
     newend_date = end_date.split('-')[::-1]
     newend_date = '-'.join(newend_date)
     save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + components + "comp/"
-    #path = save_dir + "NMFdata_" + start_time + "_" + end_date + "_" + end_time + ".pkl"
+    avg_freqs = np.zeros((24, 2))
     for i in range(24):
         intstr = "%02d" % i
         path = save_dir + "NMFdata_" + intstr + ":00:00_" + end_date + "_" + intstr + ":59:59" + ".pkl"
@@ -431,10 +431,12 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
         H = pickledData[3]
         H = np.asarray(H)
         H = H.T
-        print(H.shape)
-        intstr = "%02d" % i
-        print(intstr)
-        NMF_intplotW(pit, start_date, intstr + ":00:00", start_date, intstr + ":59:59", components, 5)
+        avg_freqs[i, 0] = np.mean(H[180:370, :])
+        avg_freqs[i, 1] = np.mean(H[370:560, :])
+    print(avg_freqs)
+    plt.plot(avg_freqs)
+    plt.show()
+    plt.close()
 
 '''
 Visualize the W matrix using 2D histograms.
@@ -668,7 +670,7 @@ def main():
         print("Pit is in the format: pitX, where X is the pit no., Channel is left or right, Components is an int")
         params = input("Put in the 7 parameters separated by spaces.")
         sd, st, ed, et, pit, chan, comp = params.split()
-        NMF_interval(sd, st, ed, et, pit, chan, comp)
+        NMF_interval(sd, st, ed, et, pit, chan, comp, True)
     else:
         print("UNCLEAR. Please type an answer with a 'y' in it for yes, or a 'n' in it for no.")
         print("But, do not do both.")
