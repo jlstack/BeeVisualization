@@ -18,6 +18,7 @@ fs = 2048
 nfft = 4096
 noverlap = 2048
 
+
 def get_data(path):
     """
     Gets the data associated with an audio file, converting to wav when necessary.
@@ -52,11 +53,15 @@ def get_specgram(fname):
     :param fname: path to audio file
     :return: spectrogram for audio file
     """
-    rate, data = get_data(fname)
-    data = resample(data, len(data) / float(rate) * sample_rate)
-    specgram, freqs, time, img = plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
-    specgram = abs(specgram)
-    return specgram 
+    try:
+        rate, data = get_data(fname)
+        data = resample(data, len(data) / float(rate) * sample_rate)
+        specgram, freqs, time, img = plt.specgram(data,  pad_to=nfft, NFFT=nfft, noverlap=noverlap, Fs=fs)
+        specgram = abs(specgram)
+        return specgram 
+    except ValueError as e:
+        print e.message, '\n', fname
+
 
 def make_hex8(hex_num):
     """
@@ -67,6 +72,7 @@ def make_hex8(hex_num):
     for i in range(0, 8 - len(hex_num)):
         hex_num += "0"
     return hex_num
+
 
 def get_starting_cols(start, channel, mp3_dirs): 
     """
@@ -89,7 +95,10 @@ def get_starting_cols(start, channel, mp3_dirs):
             break
     if fname is not None:
         col = int(start, 16) - int(file_start, 16) 
-        return get_specgram(fname)[:, col:]
+        spec = get_specgram(fname)
+        if spec is not None:
+            return spec[:, col:]
+
 
 def get_fname(date, time, channel, mp3_dirs):
     """
@@ -106,6 +115,9 @@ def get_fname(date, time, channel, mp3_dirs):
     for d in mp3_dirs:
         if os.path.isdir(d % date):
             file_list = os.listdir(d % date)
+            if len(file_list) == 0 and os.path.isdir(d % (date + "Org")):
+                date = date + "Org"
+                file_list = os.listdir(d % date)
             if file_list is not None:
                 file_list.sort()
                 fname = binary_search(time, channel, file_list)
@@ -113,6 +125,7 @@ def get_fname(date, time, channel, mp3_dirs):
                     fname = d % date + fname
                     break
     return fname
+
 
 def binary_search(time, channel, file_list):
     """
@@ -123,25 +136,38 @@ def binary_search(time, channel, file_list):
     :param file_list: a sorted list of files from a directory.
     :return: name of file for desired time
     """
-    found = False
     first = 0
     last = len(file_list) - 1
     fname = None
-    while first <= last and not found:
+    while first <= last:
         midpoint = (first + last) / 2
         if time in file_list[midpoint] and channel in file_list[midpoint]:
             fname = file_list[midpoint]
             break
         else:
-            if time < file_list[midpoint].split("_")[0]:
+            if time == file_list[midpoint].split("_")[0]:
+                try:
+                    if time in file_list[midpoint - 1] and channel in file_list[midpoint - 1]:
+                        fname = file_list[midpoint - 1]
+                        break
+                except IndexError:
+                    pass
+                try:
+                    if time in file_list[midpoint + 1] and channel in file_list[midpoint + 1]:
+                        fname = file_list[midpoint + 1]
+                        break
+                except IndexError:
+                    pass    
+                break 
+            elif time < file_list[midpoint].split("_")[0]:
                 last = midpoint - 1
             else:
                 first = midpoint + 1
     return fname
 
+
 def main(start_date, start_time, pit, channel):
-    start, start_dir =  Dates.to_hex(start_date, start_time)  
-    start = make_hex8(start[:5])
+    start = make_hex8(Dates.to_hex(start_date, start_time)[0][:5])
     mp3_dirs = ["/usr/local/bee/beemon/" + pit + "/%s/audio/", "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/%s/audio/"]
     curr_date, curr_time = Dates.get_current_date()
     curr_hex = Dates.to_hex(curr_date, curr_time)[0]
@@ -154,31 +180,36 @@ def main(start_date, start_time, pit, channel):
             intensities[:, :remaining_cols.shape[1]] = remaining_cols
             remaining_cols = None
         start_datetime = None
+        file_dir = None
         for j in range(0, 4096):  # There are 4096 seconds for each specgram
             date, time = Dates.to_date('{:08x}'.format(int(start, 16) + (i * 4096) + j))
             if start_datetime is None:
+                file_dir = Dates.to_hex(date, time)[1]
                 start_datetime = date + "T" + time
             fname = get_fname(date, time, channel, mp3_dirs)
             if fname is not None:
+                print fname
                 spec = get_specgram(fname)
-                if j + spec.shape[1] <= intensities.shape[1]:
-                    intensities[:, j:j + spec.shape[1]] = spec
-                else:
-                    cols = intensities[:, j:].shape[1]
-                    intensities[:, j:j + cols] = spec[:, :cols]
-                    remaining_cols = spec[:, cols:]
-                    print spec.shape, spec[:, :cols].shape, remaining_cols.shape
+                if spec is not None:
+                    if j + spec.shape[1] <= intensities.shape[1]:
+                        intensities[:, j:j + spec.shape[1]] = spec
+                    else:
+                        cols = intensities[:, j:].shape[1]
+                        intensities[:, j:j + cols] = spec[:, :cols]
+                        remaining_cols = spec[:, cols:]
+                        print spec.shape, spec[:, :cols].shape, remaining_cols.shape
         end_date, end_time = Dates.add_seconds_to_date(start_datetime.split('T')[0], start_datetime.split('T')[1], 4095)
         end_datetime = end_date + "T" + end_time
         # only creates file if audio files were found. (there are entries in intensities that are not equal to np.NaN)
+        print intensities.shape
         if np.count_nonzero(~np.isnan(intensities)) > 0:
-            out_dir =  "/usr/local/bee/beemon/beeW/Luke/numpy_specs/%s/" % pit + start_dir
+            out_dir =  "/usr/local/bee/beemon/beeW/Luke/numpy_specs/%s/" % pit + file_dir
             if not os.path.isdir(out_dir): 
                 os.makedirs(out_dir)
             print out_dir + '{:08x}'.format(int(start, 16) + (i * 4096))[:5] + "_" + channel + ".npz"
             print "Time frame:", start_datetime, "-", end_datetime, "\n"
-            np.savez_compressed(out_dir + '{:08x}'.format(int(start, 16) + (i * 4096))[:5] + "_" + channel + ".npz", 
-                                intensities=intensities, sample_rate=sample_rate)
+            print intensities.shape
+            np.savez_compressed(out_dir + '{:08x}'.format(int(start, 16) + (i * 4096))[:5] + "_" + channel + ".npz", intensities=intensities, sample_rate=sample_rate, start_datetime=start_datetime, end_datetime=end_datetime)
 
 if __name__ == "__main__":
     import sys
