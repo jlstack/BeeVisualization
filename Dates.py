@@ -23,7 +23,7 @@ def to_hex(date, file_time):
     d = datetime(year=int(date[0]), month=int(date[1]), day=int(date[2]),
                  hour=int(file_time[0]), minute=int(file_time[1]), second=int(file_time[2]), tzinfo=utc)
     seconds = int((d - START_DATE).total_seconds())
-    return '{:08x}'.format(seconds), '/'.join('{:08x}'.format(seconds)[:5]) + "/"
+    return '{:08x}'.format(seconds), '/'.join('{:08x}'.format(seconds)[:4]) + "/"
 
 
 def to_date(hex_num):
