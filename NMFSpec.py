@@ -63,7 +63,7 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     combined_spec[:] = 0
     for i in range(int(start_hex[:5], 16), int(end_hex[:5], 16) + 1):
         i_hex = '{:05x}'.format(i)
-        d = '/'.join(i_hex) + '/'
+        d = '/'.join(i_hex[-5:-1]) + '/'
         if os.path.isfile(spec_dir % pit + d + i_hex + '_' + channel + '.npz'):
             print(spec_dir % pit + d + i_hex + '_' + channel + '.npz')
             npz_file = np.load(spec_dir % pit + d + i_hex + '_' + channel + '.npz')
@@ -97,7 +97,7 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     if len(a) % 2 != 0:
         new_spec[-1,:] = a[-1,:].ravel()
     #new_spec = new_spec[:, ~np.all(np.isnan(new_spec), axis=0)]
-    #new_spec = np.nan_to_num(new_spec)
+    new_spec = np.nan_to_num(new_spec)
     new_spec = (new_spec - np.amin(new_spec)) / (np.amax(new_spec) - np.amin(new_spec))
     print(np.amin(new_spec))
     print(np.amax(new_spec))
@@ -388,10 +388,10 @@ def old_create_specgrams(start_date, start_time, end_date, end_time, pit, channe
         if os.path.isfile(fname):
             data = np.load(fname).item()
             combined_spec.append(data["intensities"])
-    new_spec = (combined_spec - np.amin(combined_spec)) / (np.amax(combined_spec) - np.amin(combined_spec))
-    print(np.amin(new_spec))
-    print(np.amax(new_spec))
-    return new_spec
+    #new_spec = (combined_spec - np.amin(combined_spec)) / (np.amax(combined_spec) - np.amin(combined_spec))
+    #print(np.amin(new_spec))
+    #print(np.amax(new_spec))
+    return combined_spec
 
 '''
 This function reads each file from the parsefiles list and gets the data
@@ -464,7 +464,7 @@ The newdate parameter is the date in the format YYYY-MM-DD.
 
 '''
 def specgram_viewer(parsefiles, path, pit, date, dates, newdate):
-    spec1 = np.asarray(create_specgrams(newdate, "00:00:00", newdate, "00:59:59", pit, "left"))
+    spec1 = np.asarray(old_create_specgrams(newdate, "00:00:00", newdate, "00:59:59", pit, "left"))
     print("Got first specgram set")
     spec2 = np.asarray(specgramdata_getter(parsefiles, path, pit, date, dates, newdate))
     print("Got second specgram set")
@@ -472,9 +472,9 @@ def specgram_viewer(parsefiles, path, pit, date, dates, newdate):
     for x in range(2):
         ax = fig.add_subplot(1, 2, x)
         if x == 0:
-            ax.plot(spec1[:,0])
+            ax.plot(spec1[:])
         else:
-            ax.plot(spec2[:,0])
+            ax.plot(spec2[:])
     plt.show()
     plt.close()
 
@@ -506,7 +506,7 @@ def NMF_dir(path, pit, hour, components = 5, date = None, limit = None):
         newdate = date.split('-')[::-1]
         newdate = '-'.join(newdate)
     dates, parsefiles, limit, path = audiolist_getter(path, pit, date, limit)
-    #specgram_viewer(parsefiles, path, pit, date, dates, newdate)
+    specgram_viewer(parsefiles, path, pit, date, dates, newdate)
     #Get the recordings and parse them for clustering
     if path == "/usr/local/bee/beemon/beeW/Luke/mp3s/" + pit + "/" + date:
         data = create_specgrams(newdate, hour + ":00:00", newdate, hour + ":59:59", pit, "left")
@@ -661,6 +661,7 @@ def main():
     answer = input("Are you using a time interval?")
     if 'n' in answer or 'N' in answer:
         params = input("Put in your parameters.")
+        params = params.split()
         if len(params) == 3:
             NMF_dir(params[0], params[1], params[2])
         elif len(params) == 4:
