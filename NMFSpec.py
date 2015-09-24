@@ -18,8 +18,11 @@ from scipy import signal
 from scipy import stats
 from matplotlib import pyplot as plt
 from matplotlib import ticker
+import matplotlib.cm as cm
+import matplotlib.colors as colors
 import os
 from time import time
+from time import sleep
 from pydub import AudioSegment
 import pickle
 import tempfile
@@ -27,6 +30,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import Dates
 import math
 from datetime import datetime
+
+#linestyles = ['-', '--', '-.', ':']
 
 """
 Pads end of hex with 0s to make it length 8.  The padded number is returned.
@@ -99,8 +104,6 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     #new_spec = new_spec[:, ~np.all(np.isnan(new_spec), axis=0)]
     new_spec = np.nan_to_num(new_spec)
     new_spec = (new_spec - np.amin(new_spec)) / (np.amax(new_spec) - np.amin(new_spec))
-    print(np.amin(new_spec))
-    print(np.amax(new_spec))
     return new_spec
 
 """
@@ -202,12 +205,20 @@ def NMF_intplotW(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
      components = pickledData[2]
      print(components.shape)
      fig = plt.figure()
-     ax = fig.add_subplot(111)
+     ax = plt.subplot(111)
      lin = range(0, len(components))
-     plt.plot(lin, components[:, :dims])
+     #Make a colormap for the lines, so that each dimension gets a unique color
+     linecolors = colormap_lines(dims)
+     for i in range(dims):
+         ax.plot(lin, components[:, i], label = 'Spectrum ' + str(i), color = linecolors[i])
      ax.xaxis.set_ticks(np.arange(0, len(components)+1, int((len(components)-(len(components)%100))/5)))
      ax.xaxis.set_label_text("Time in Seconds")
      ax.yaxis.set_label_text("Intensity")
+     #Get the current position of the axes, and set the axes to be higher up for the legend
+     current = ax.get_position()
+     ax.set_position([current.x0, current.y0 + current.width * .15, current.width, current.height * .9])
+     #Plot the legend underneath the x-axis
+     ax.legend(loc = 'upper center', bbox_to_anchor = (.5, -.1), ncol = math.floor(math.sqrt(dims)+1))
      plt.xlim((0, len(components)))
      #Limit the y-axis to the same scale for each subplot
      maxht = np.amax(components[:, :dims])
@@ -240,12 +251,20 @@ def NMF_intplotH(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
     components = components.T
     print(components.shape)
     fig = plt.figure()
-    ax = fig.add_subplot(111)
+    ax = plt.subplot(111)
     lin = range(0, len(components))
-    plt.plot(lin, components[:, :dims])
+    #Make a colormap for the lines, so that each dimension gets a unique color
+    linecolors = colormap_lines(dims)
+    for i in range(dims):
+        ax.plot(lin, components[:, i], label = 'Spectrum ' + str(i), color = linecolors[i])
     ax.xaxis.set_ticks([0, 200, 400, 600, 800, 1000])
     ax.xaxis.set_label_text("Frequencies in Hertz")
     ax.yaxis.set_label_text("Intensity")
+    #Get the current position of the axes, and set the axes to be higher up for the legend
+    current = ax.get_position()
+    ax.set_position([current.x0, current.y0 + current.width * .15, current.width, current.height * .9])
+    #Plot the legend underneath the x-axis
+    ax.legend(loc = 'upper center', bbox_to_anchor = (.5, -.1), ncol = math.floor(math.sqrt(dims)+1))
     plt.xlim((0, len(components)))
     #Limit the y-axis to the same scale for each subplot
     maxht = np.amax(components[:, :dims])
@@ -257,6 +276,20 @@ def NMF_intplotH(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
     plt.close()
+
+'''
+This function creates and returns a normalized array based on the number of dimensions requested.
+It uses the spectral colormap from matplotlib's database of colormaps.  This allows the map to be
+diverse in the actual mapped colors.
+
+The lim parameter is the number of spectra being plotted.
+'''
+def colormap_lines(lim):
+    clu_colors = plt.get_cmap("spectral")
+    norm = colors.Normalize(vmin = 0, vmax = lim)
+    scalarMap = cm.ScalarMappable(cmap = clu_colors, norm = norm)
+    linecolors = scalarMap.to_rgba(range(lim))
+    return linecolors
 
 '''
 -----------OLD FUNCTIONS-----------
