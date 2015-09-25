@@ -31,7 +31,6 @@ import Dates
 import math
 from datetime import datetime
 
-#linestyles = ['-', '--', '-.', ':']
 
 """
 Pads end of hex with 0s to make it length 8.  The padded number is returned.
@@ -164,26 +163,39 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
     newstart_date = '-'.join(newstart_date)
     newend_date = end_date.split('-')[::-1]
     newend_date = '-'.join(newend_date)
+    elapsed_time = Dates.time_diff(newstart_date, start_time, newend_date, end_time)
+    hours_elapsed = math.ceil(elapsed_time / 3600)
+    days_elapsed = math.ceil(hours_elapsed / 24)
     save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + components + "comp/"
-    avg_freqs = np.zeros((24, 2))
-    for i in range(24):
-        intstr = "%02d" % i
-        path = save_dir + "NMFdata_" + intstr + ":00:00_" + end_date + "_" + intstr + ":59:59" + ".pkl"
+    avg_freqs = np.zeros((hours_elapsed, 2))
+    first_hour = int(start_time.split(':')[0])
+    col_counter = 0
+    for i in range(first_hour, hours_elapsed + first_hour):
+        intstr = "%02d" % (i % 24)
+        path = save_dir + "NMFdata_" + intstr + ":00:00_" + start_date + "_" + intstr + ":59:59" + ".pkl"
         if not os.path.isfile(path):
             NMF_interval(newstart_date, intstr + ":00:00", newstart_date, intstr + ":59:59", pit, channel, components, True)
         pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
         H = pickledData[3]
         H = np.asarray(H)
         H = H.T
-        avg_freqs[i, 0] = np.mean(H[180:370, :])
-        avg_freqs[i, 1] = np.mean(H[370:560, :])
-    print(avg_freqs)
+        avg_freqs[col_counter, 0] = np.mean(H[180:370, :])
+        avg_freqs[col_counter, 1] = np.mean(H[370:560, :])
+        col_counter += 1
+        if(i == 23):
+            Dates.add_seconds_to_date(newstart_date, start_time, 86400 - first_hour * 3600)
+        if(i % 24 == 23 and i != 23):
+            Dates.add_seconds_to_date(newstart_date, start_time, 86400)
     fig = plt.figure()
-    ax = fig.add_subplot(111)
-    plt.plot(avg_freqs)
+    ax = plt.subplot(111)
+    plt.plot(avg_freqs[:,0], color = '#ff8800', label = '180 - 369 Hz')
+    plt.plot(avg_freqs[:,1], color = '#0088ff', label = '370 - 559 Hz')
     ax.xaxis.set_label_text("Time in Hours")
     ax.yaxis.set_label_text("Average Intensities")
-    plt.title("Average Frequencies for " + start_date)
+    plt.title("Average Frequencies for " + start_date + " " + start_time + " to " + end_date + " " + end_time)
+    ax.legend(loc = 'upper center', bbox_to_anchor = (.5, -.1), ncol = avg_freqs.shape[1])
+    current = ax.get_position()
+    ax.set_position([current.x0, current.y0 + current.width * .05, current.width, current.height * .95])
     plt.show()
     plt.close()
 
@@ -222,10 +234,10 @@ def NMF_intplotW(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
      plt.xlim((0, len(components)))
      #Limit the y-axis to the same scale for each subplot
      maxht = np.amax(components[:, :dims])
-     if np.amax(maxht) < .002:
-         plt.ylim((0, maxht))
+     if np.amax(maxht) < .01:
+          plt.ylim((0, maxht))
      else:
-         plt.ylim((0, .002))
+         plt.ylim((0, .01))
      plt.title("Density Plots of W for " + st_date + " " + st_time + " to " + end_date + " " + end_time, fontsize = 20)
      print("Time to graph items: " + str(time() - t0) + " sec.")
      plt.show()
@@ -268,10 +280,10 @@ def NMF_intplotH(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
     plt.xlim((0, len(components)))
     #Limit the y-axis to the same scale for each subplot
     maxht = np.amax(components[:, :dims])
-    if np.amax(maxht) < .005:
+    if np.amax(maxht) < .05:
         plt.ylim((0, maxht))
     else:
-        plt.ylim((0, .005))
+        plt.ylim((0, .05))
     plt.title("Density Plots of H for " + st_date + " " + st_time + " to " + end_date + " " + end_time, fontsize = 20)
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
