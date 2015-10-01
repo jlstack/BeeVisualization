@@ -132,7 +132,7 @@ def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, compo
     print(data.shape)
     t1 = time()
     print("Data gathering complete. Doing nonnegative matrix factorization.")
-    estimator = decomposition.NMF(n_components = components, init = 'nndsvdar', max_iter = 1000, nls_max_iter = 50000, random_state = 327, tol = 0.002)
+    estimator = decomposition.NMF(n_components = components, init = 'nndsvdar', max_iter = 1000, nls_max_iter = 50000, random_state = 327, tol = 0.01)
     print("Fitting the model to your data...")
     print("This may take some time...")
     w = estimator.fit_transform(data)
@@ -204,8 +204,9 @@ Visualize the W matrix using 2D histograms.
 
 The pit parameter is the pit to choose from.
 The st_date parameter is the date of the first file.
+The st_time parameter is the start time of the first file.
 The end_date parameter is the date of the last file.
-The end_time parameter is the start time of the last file.
+The end_time parameter is the last second desired.
 The comp parameter is the number of components.
 The dims parameter is the number of dimensions to visualize.
 '''
@@ -222,7 +223,7 @@ def NMF_intplotW(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
      #Make a colormap for the lines, so that each dimension gets a unique color
      linecolors = colormap_lines(dims)
      for i in range(dims):
-         ax.plot(lin, components[:, i], label = 'Spectrum ' + str(i), color = linecolors[i])
+         ax.plot(lin, components[:, i], label = 'Spec. ' + str(i), color = linecolors[i])
      ax.xaxis.set_ticks(np.arange(0, len(components)+1, int((len(components)-(len(components)%100))/5)))
      ax.xaxis.set_label_text("Time in Seconds")
      ax.yaxis.set_label_text("Intensity")
@@ -248,8 +249,9 @@ Visualize the H matrix of the NMF using a density plot.
 
 The pit parameter is the pit to choose from.
 The st_date parameter is the date of the first file.
+The st_time parameter is the start time of the first file.
 The end_date parameter is the date of the last file.
-The end_time parameter is the start time of the last file.
+The end_time parameter is the last second desired.
 The comp parameter is the number of components.
 The dims parameter is the number of dimensions to visualize.
 '''
@@ -268,7 +270,7 @@ def NMF_intplotH(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
     #Make a colormap for the lines, so that each dimension gets a unique color
     linecolors = colormap_lines(dims)
     for i in range(dims):
-        ax.plot(lin, components[:, i], label = 'Spectrum ' + str(i), color = linecolors[i])
+        ax.plot(lin, components[:, i], label = 'Spec. ' + str(i), color = linecolors[i])
     ax.xaxis.set_ticks([0, 200, 400, 600, 800, 1000])
     ax.xaxis.set_label_text("Frequencies in Hertz")
     ax.yaxis.set_label_text("Intensity")
@@ -302,6 +304,60 @@ def colormap_lines(lim):
     scalarMap = cm.ScalarMappable(cmap = clu_colors, norm = norm)
     linecolors = scalarMap.to_rgba(range(lim))
     return linecolors
+
+'''
+This function plots both H and W side by side.  This becomes useful for comparative purposes.
+
+The pit parameter is the pit to choose from.
+The st_date parameter is the date of the first file.
+The st_time parameter is the start time of the first file.
+The end_date parameter is the date of the last file.
+The end_time parameter is the last second desired.
+The comp parameter is the number of components.
+The dims parameter is the number of dimensions to visualize.
+'''
+def plotInterval(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
+    path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + st_date + "/" + comp + "comp/NMFdata_" + st_time + '_' + end_date + "_" + end_time + ".pkl"
+    pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
+    h = pickledData[3]
+    h = np.asarray(h)
+    h = h.T
+    lin = range(0, len(h))
+    #Plot H
+    ax = plt.subplot(121)
+    ax.set_title("H", fontsize = 20)
+    linecolors = colormap_lines(dims)
+    for i in range(dims):
+        ax.plot(lin, h[:, i], label = 'Spec. ' + str(i), color = linecolors[i])
+    ax.xaxis.set_ticks([0, 200, 400, 600, 800, 1000])
+    ax.xaxis.set_label_text("Frequencies in Hertz")
+    ax.yaxis.set_label_text("Intensity")
+    #Get the current position of the axes, and set the axes to be higher up for the legend
+    current = ax.get_position()
+    ax.set_position([current.x0, current.y0 + current.width * .3, current.width, current.height * .9])
+    ax.set_xlim([0, len(h)])
+    ax.set_ylim([0, .05])
+    #Plot W now
+    ax = plt.subplot(122)
+    ax.set_title("W", fontsize = 20)
+    w = pickledData[2]
+    lin = range(0, len(w))
+    #Make a colormap for the lines, so that each dimension gets a unique color
+    for i in range(dims):
+        ax.plot(lin, w[:, i], label = 'Spec. ' + str(i), color = linecolors[i])
+    ax.xaxis.set_ticks(np.arange(0, len(w)+1, int((len(w)-(len(w)%100))/5)))
+    ax.xaxis.set_label_text("Time in Seconds")
+    ax.yaxis.set_label_text("Intensity")
+    #Get the current position of the axes, and set the axes to be higher up for the legend
+    current = ax.get_position()
+    ax.set_position([current.x0, current.y0 + current.width * .3, current.width, current.height * .9])
+    ax.set_xlim([0, len(w)])
+    ax.set_ylim([0, .01])
+    #Plot the legend underneath the x-axis
+    plt.legend(loc = 'upper center', bbox_to_anchor = (-.1, -.08), ncol = math.floor(math.sqrt(dims)+1))
+    plt.suptitle("Graph of " + st_date + " " + st_time + " to " + end_date + " " + end_time , fontsize = 15)
+    plt.show()
+    plt.close()
 
 '''
 -----------OLD FUNCTIONS-----------
