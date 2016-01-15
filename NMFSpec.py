@@ -103,6 +103,7 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     #new_spec = new_spec[:, ~np.all(np.isnan(new_spec), axis=0)]
     new_spec = np.nan_to_num(new_spec)
     new_spec = (new_spec - np.amin(new_spec)) / (np.amax(new_spec) - np.amin(new_spec))
+    new_spec[0] = 0;
     return new_spec
 
 """
@@ -136,7 +137,9 @@ def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, compo
     print("Fitting the model to your data...")
     print("This may take some time...")
     w = estimator.fit_transform(data)
+    #w = (w - np.amin(w)) / (np.amax(w) - np.amin(w))
     h = estimator.components_
+    #h = (h - np.amin(h)) / (np.amax(h) - np.amin(h))
     t2 = time()
     print(t2 - t1)
     saveddata = [np.dot(w,h), estimator.reconstruction_err_, w, h]
@@ -325,7 +328,7 @@ def plotInterval(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
     lin = range(0, len(h))
     #Plot H
     ax = plt.subplot(121)
-    ax.set_title("H", fontsize = 20)
+    ax.set_title("H", fontsize = 10)
     linecolors = colormap_lines(dims)
     for i in range(dims):
         ax.plot(lin, h[:, i], label = 'Spec. ' + str(i), color = linecolors[i])
@@ -339,7 +342,7 @@ def plotInterval(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
     ax.set_ylim([0, .05])
     #Plot W now
     ax = plt.subplot(122)
-    ax.set_title("W", fontsize = 20)
+    ax.set_title("W", fontsize = 10)
     w = pickledData[2]
     lin = range(0, len(w))
     #Make a colormap for the lines, so that each dimension gets a unique color
@@ -347,7 +350,9 @@ def plotInterval(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
         ax.plot(lin, w[:, i], label = 'Spec. ' + str(i), color = linecolors[i])
     ax.xaxis.set_ticks(np.arange(0, len(w)+1, int((len(w)-(len(w)%100))/5)))
     ax.xaxis.set_label_text("Time in Seconds")
-    ax.yaxis.set_label_text("Intensity")
+    ax.tick_params(labelright = True, labelleft = False)
+    ax.yaxis.set_label_text("Intensity", rotation = 270)
+    ax.yaxis.set_label_position("right")
     #Get the current position of the axes, and set the axes to be higher up for the legend
     current = ax.get_position()
     ax.set_position([current.x0, current.y0 + current.width * .3, current.width, current.height * .9])
@@ -355,8 +360,9 @@ def plotInterval(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
     ax.set_ylim([0, .01])
     #Plot the legend underneath the x-axis
     plt.legend(loc = 'upper center', bbox_to_anchor = (-.1, -.08), ncol = math.floor(math.sqrt(dims)+1))
-    plt.suptitle("Graph of " + st_date + " " + st_time + " to " + end_date + " " + end_time , fontsize = 15)
+    plt.suptitle("Graph of " + st_date + " " + st_time + " to " + end_date + " " + end_time , fontsize = 12)
     plt.show()
+    #plt.savefig(st_date + 'T' + st_time + '.png', format='png', dpi = 500)
     plt.close()
 
 '''
