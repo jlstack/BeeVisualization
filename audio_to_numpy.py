@@ -103,11 +103,12 @@ def get_starting_cols(start, channel, mp3_dirs):
 def get_fname(date, time, channel, mp3_dirs):
     """
     Locates file name for desired time and date.
-    :param date: date of desired file (YYYY-MM-DD)
+    :param date: date of desired file (YYYY-MM-DD) *COMMENTED OUT*
     :param time: time of desired file (HH:MM:SS) 
     :param channel: left or right (microphone for hive)
     :param mp3_dirs: list of directories where file may be located
     """
+    #Commented out to fit new date format
     '''date = date.split("-")
     date.reverse()
     date = "-".join(date)'''
@@ -120,6 +121,7 @@ def get_fname(date, time, channel, mp3_dirs):
                 file_list = os.listdir(d % date)
             if file_list is not None:
                 file_list.sort()
+                print(time)
                 fname = binary_search(time, channel, file_list)
                 if fname is not None:
                     fname = d % date + fname
@@ -139,16 +141,15 @@ def binary_search(time, channel, file_list):
     first = 0
     last = len(file_list) - 1
     fname = None
+    #For new time format
     time = '-'.join(time.split(':'))
     while first <= last:
         midpoint = int((first + last) / 2)
         if time in file_list[midpoint] and channel in file_list[midpoint]:
-            print(time)
             fname = file_list[midpoint]
             break
         else:
-            if time == ''.join(file_list[midpoint].split('-')[0:3]):
-                print(time)
+            if time == '-'.join(file_list[midpoint].split('-')[0:3]):
                 try:
                     if time in file_list[midpoint - 1] and channel in file_list[midpoint - 1]:
                         fname = file_list[midpoint - 1]
@@ -162,7 +163,7 @@ def binary_search(time, channel, file_list):
                 except IndexError:
                     pass    
                 break 
-            elif time < ''.join(file_list[midpoint].split('-')[0:3]):
+            elif time < '-'.join(file_list[midpoint].split('-')[0:3]):
                 last = midpoint - 1
             else:
                 first = midpoint + 1
