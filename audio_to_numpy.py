@@ -121,7 +121,6 @@ def get_fname(date, time, channel, mp3_dirs):
                 file_list = os.listdir(d % date)
             if file_list is not None:
                 file_list.sort()
-                print(time)
                 fname = binary_search(time, channel, file_list)
                 if fname is not None:
                     fname = d % date + fname
