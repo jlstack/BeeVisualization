@@ -213,6 +213,7 @@ def main(start_date, start_time, pit, channel):
             print("Time frame:", start_datetime, "-", end_datetime, "\n")
             print(intensities.shape)
             np.savez_compressed(out_dir + '{:08x}'.format(int(start, 16) + (i * 4096))[:5] + "_" + channel + ".npz", intensities=intensities, sample_rate=sample_rate, start_datetime=start_datetime, end_datetime=end_datetime)
+            print("Save completed.")
 
 if __name__ == "__main__":
     import sys
