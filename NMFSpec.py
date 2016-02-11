@@ -160,8 +160,9 @@ The end_date parameter is the date of the last file.
 The end_time parameter is the start time of the last file.
 The channel parameter is left or right mic (ALWAYS left for pit2).
 The components parameter is the number of components.
+The pic parameter is whether or not to show the graph afterwards (default is False).
 """
-def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, components):
+def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, components, pic=False):
     newstart_date = start_date.split('-')[::-1]
     newstart_date = '-'.join(newstart_date)
     newend_date = end_date.split('-')[::-1]
@@ -210,7 +211,8 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
     ax.legend(loc = 'upper center', bbox_to_anchor = (.5, -.1), ncol = avg_freqs.shape[1])
     current = ax.get_position()
     ax.set_position([current.x0, current.y0 + current.width * .05, current.width, current.height * .95])
-    plt.show()
+    if(pic):
+        plt.show()
     plt.close()
 
 '''
