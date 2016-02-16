@@ -171,7 +171,7 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
     hours_elapsed = math.ceil(elapsed_time / 3600)
     days_elapsed = math.ceil(hours_elapsed / 24)
     save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + components + "comp/"
-    avg_freqs = np.zeros((hours_elapsed, 2))
+    avg_freqs = np.zeros((24, 2))
     first_hour = int(start_time.split(':')[0])
     col_counter = 0
     for i in range(first_hour, hours_elapsed + first_hour):
@@ -183,8 +183,8 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
         H = pickledData[3]
         H = np.asarray(H)
         H = H.T
-        avg_freqs[col_counter, 0] = np.mean(H[180:370, :])
-        avg_freqs[col_counter, 1] = np.mean(H[370:560, :])
+        avg_freqs[i, 0] = np.mean(H[180:370, :])
+        avg_freqs[i, 1] = np.mean(H[370:560, :])
         col_counter += 1
         if(i == 23):
             Dates.add_seconds_to_date(newstart_date, start_time, 86400 - first_hour * 3600)
@@ -192,17 +192,17 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
             Dates.add_seconds_to_date(newstart_date, start_time, 86400)
     fig = plt.figure()
     ax = plt.subplot(111)
-    if(len(avg_freqs) == 24):
-        print('-----TIME SENSITIVE INTENSITIES-----')
-        print('Low freqs day: ' + '{:.7f}'.format(np.mean(avg_freqs[5:22, 0])))
-        print('High freqs day: ' + '{:.7f}'.format(np.mean(avg_freqs[5:22, 1])))
-        print('Low freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[0:5, 0], avg_freqs[22:24, 0])))))
-        print('High freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[0:5, 1], avg_freqs[22:24, 1])))))
-    else:
-        print('Not 24 hours in the data span. Only totals for whole day given.')
+    #if(len(avg_freqs) == 24):
+    print('-----TIME SENSITIVE INTENSITIES-----')
+    print('Low freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[8:22, 0], weights = avg_freqs[8:22, 0].astype(bool))))
+    print('High freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[8:22, 1], weights = avg_freqs[8:22, 1].astype(bool))))
+    print('Low freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[0:5, 0], avg_freqs[22:24, 0])))))
+    print('High freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[0:5, 1], avg_freqs[22:24, 1])))))
+    ##else:
+     #   print('Not 24 hours in the data span. Only totals for whole day given.')
     print('-----INTENSITY TOTALS-----')
-    print('Low freqs total: ' + '{:.7f}'.format(np.mean(avg_freqs[:, 0])))
-    print('High freqs total: ' + '{:.7f}'.format(np.mean(avg_freqs[:, 1])))
+    print('Low freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 0], weights = avg_freqs[:,0].astype(bool))))
+    print('High freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 1], weights = avg_freqs[:,1].astype(bool))))
     plt.plot(avg_freqs[:,0], color = '#ff8800', label = '180 - 369 Hz')
     plt.plot(avg_freqs[:,1], color = '#0088ff', label = '370 - 559 Hz')
     ax.xaxis.set_label_text("Time in Hours")
