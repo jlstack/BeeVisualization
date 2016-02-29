@@ -150,8 +150,8 @@ def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, compo
     print(time() - t0)
 
 """
-This function takes the two 'clusters' of data at approximately - Hz and - Hz, and averages the intensities
-for the two 'clusters'.  Then, the two lines are plotted for the time interval given.
+This function takes the two 'clusters' of data at approximately 180-369 Hz and 370-559 Hz, and averages the
+intensities for the two 'clusters'.  Then, the two lines are plotted for the time interval given.
 
 The pit parameter is the pit to choose from.
 The start_date parameter is the date of the first file.
@@ -192,14 +192,11 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
             Dates.add_seconds_to_date(newstart_date, start_time, 86400)
     fig = plt.figure()
     ax = plt.subplot(111)
-    #if(len(avg_freqs) == 24):
     print('-----TIME SENSITIVE INTENSITIES-----')
     print('Low freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[8:22, 0], weights = avg_freqs[8:22, 0].astype(bool))))
     print('High freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[8:22, 1], weights = avg_freqs[8:22, 1].astype(bool))))
-    print('Low freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[0:5, 0], avg_freqs[22:24, 0])))))
-    print('High freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[0:5, 1], avg_freqs[22:24, 1])))))
-    ##else:
-     #   print('Not 24 hours in the data span. Only totals for whole day given.')
+    print('Low freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[0:8, 0], avg_freqs[22:24, 0])))))
+    print('High freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[0:8, 1], avg_freqs[22:24, 1])))))
     print('-----INTENSITY TOTALS-----')
     print('Low freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 0], weights = avg_freqs[:,0].astype(bool))))
     print('High freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 1], weights = avg_freqs[:,1].astype(bool))))
@@ -380,6 +377,11 @@ def plotInterval(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
 
 '''
 -----------OLD FUNCTIONS-----------
+
+These functions were used at one time, but are not used anymore.
+Some of these functions are handled more efficiently above, or
+are done through the use of Luke's functions in a more efficient
+manner.
 '''
 
 '''
