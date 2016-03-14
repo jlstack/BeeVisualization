@@ -3,33 +3,30 @@ NMFSpec.py
 
 This file contains functions to get the audio files
 and perform nonnegative matrix factorization on them.  It also contains
-functions that enable the user to plot the results of the NMF.
+functions that enable the user to plot the results of the NMF, as well
+as do some analysis on the results, such as finding average intensity over
+specified frequency ranges of interest.
 """
 
 __author__ = "Chris Smith"
 
-import sys
-from scipy.io.wavfile import read as read_wav
+#Imports for current functions
 from sklearn import decomposition
-from sklearn import preprocessing
 import numpy as np
-import wave
-from scipy import signal
-from scipy import stats
 from matplotlib import pyplot as plt
-from matplotlib import ticker
 import matplotlib.cm as cm
 import matplotlib.colors as colors
 import os
 from time import time
-from time import sleep
-from pydub import AudioSegment
 import pickle
-import tempfile
-from mpl_toolkits.mplot3d import Axes3D
 import Dates
 import math
 from datetime import datetime
+#Imports for old functions
+import wave
+from scipy import signal
+from pydub import AudioSegment
+import tempfile
 
 
 """
@@ -65,6 +62,7 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     cols = int(end_hex, 16) - int(start_hex, 16)
     combined_spec = np.empty((2049, cols))
     combined_spec[:] = 0
+    #Get 4096 seconds of specgram data
     for i in range(int(start_hex[:5], 16), int(end_hex[:5], 16) + 1):
         i_hex = '{:05x}'.format(i)
         d = '/'.join(i_hex[-5:-1]) + '/'
@@ -93,6 +91,7 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     a = np.asarray(combined_spec)
     new_spec = np.zeros((math.ceil(len(a)/2), len(a[0])))
     newRows = range(0,math.floor(len(a)/2)*2, 2)
+    #Take the average of each pair of rows
     for i in newRows:
         b = np.mean(a[i:i+2, :], axis=0)
         b = b.reshape((len(b), 1))
@@ -101,8 +100,10 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     if len(a) % 2 != 0:
         new_spec[-1,:] = a[-1,:].ravel()
     #new_spec = new_spec[:, ~np.all(np.isnan(new_spec), axis=0)]
+    #Normalize the data
     new_spec = np.nan_to_num(new_spec)
     new_spec = (new_spec - np.amin(new_spec)) / (np.amax(new_spec) - np.amin(new_spec))
+    #Set the intensity of 0 Hz to 0, as there is an odd spike that throws the NMF off at 0 Hz
     new_spec[0] = 0;
     return new_spec
 
@@ -119,6 +120,7 @@ The components parameter is the number of components for the nonnegative matrix 
 The save parameter is whether or not to save. Default is false.
 """
 def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, components, save = False):
+    #Time the function, and put the date in the right format
     t0 = time()
     newstart_date = start_date.split('-')[::-1]
     newstart_date = '-'.join(newstart_date)
@@ -128,6 +130,7 @@ def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, compo
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
     components = int(components)
+    #Get the spectrograms and do nonnegative matrix factorization on it
     data = create_specgrams(start_date, start_time, end_date, end_time, pit, channel)
     data = data.T
     print(data.shape)
@@ -136,6 +139,7 @@ def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, compo
     estimator = decomposition.NMF(n_components = components, init = 'nndsvdar', max_iter = 1000, nls_max_iter = 50000, random_state = 327, tol = 0.01)
     print("Fitting the model to your data...")
     print("This may take some time...")
+    #Get the W and H matrices
     w = estimator.fit_transform(data)
     #w = (w - np.amin(w)) / (np.amax(w) - np.amin(w))
     h = estimator.components_
@@ -143,6 +147,7 @@ def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, compo
     t2 = time()
     print(t2 - t1)
     saveddata = [np.dot(w,h), estimator.reconstruction_err_, w, h]
+    #Save the data if wanted
     if save is True:
         print("Saving results...")
         pickle.dump(saveddata, open(save_dir + "NMFdata_" + start_time+ "_" + newend_date + "_" + end_time + ".pkl", "wb"), protocol = 2)
@@ -162,11 +167,13 @@ The channel parameter is left or right mic (ALWAYS left for pit2).
 The components parameter is the number of components.
 The pic parameter is whether or not to show the graph afterwards (default is False).
 """
-def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, components, pic=False):
+def avg_intensities(pit, start_date, start_time, end_date, end_time, channel, components, pic=False):
+    #Put the dates in the right format
     newstart_date = start_date.split('-')[::-1]
     newstart_date = '-'.join(newstart_date)
     newend_date = end_date.split('-')[::-1]
     newend_date = '-'.join(newend_date)
+    #Get the elapsed time
     elapsed_time = Dates.time_diff(newstart_date, start_time, newend_date, end_time)
     hours_elapsed = math.ceil(elapsed_time / 3600)
     days_elapsed = math.ceil(hours_elapsed / 24)
@@ -174,6 +181,7 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
     avg_freqs = np.zeros((24, 2))
     first_hour = int(start_time.split(':')[0])
     col_counter = 0
+    #Get data for each hour, and add it to the figure
     for i in range(first_hour, hours_elapsed + first_hour):
         intstr = "%02d" % (i % 24)
         path = save_dir + "NMFdata_" + intstr + ":00:00_" + start_date + "_" + intstr + ":59:59" + ".pkl"
@@ -183,15 +191,18 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
         H = pickledData[3]
         H = np.asarray(H)
         H = H.T
+        #Get frequency ranges 180-369 Hz and 370-559 Hz
         avg_freqs[i, 0] = np.mean(H[180:370, :])
         avg_freqs[i, 1] = np.mean(H[370:560, :])
         col_counter += 1
+        #This doesn't work as I thought. Needs to be refactored, so that it increments for one day
         if(i == 23):
             Dates.add_seconds_to_date(newstart_date, start_time, 86400 - first_hour * 3600)
         if(i % 24 == 23 and i != 23):
             Dates.add_seconds_to_date(newstart_date, start_time, 86400)
     fig = plt.figure()
     ax = plt.subplot(111)
+    #Print out information pertaining to
     print('-----TIME SENSITIVE INTENSITIES-----')
     print('Low freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[8:22, 0], weights = avg_freqs[8:22, 0].astype(bool))))
     print('High freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[8:22, 1], weights = avg_freqs[8:22, 1].astype(bool))))
@@ -200,6 +211,7 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
     print('-----INTENSITY TOTALS-----')
     print('Low freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 0], weights = avg_freqs[:,0].astype(bool))))
     print('High freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 1], weights = avg_freqs[:,1].astype(bool))))
+    #Plot both frequency ranges
     plt.plot(avg_freqs[:,0], color = '#ff8800', label = '180 - 369 Hz')
     plt.plot(avg_freqs[:,1], color = '#0088ff', label = '370 - 559 Hz')
     ax.xaxis.set_label_text("Time in Hours")
@@ -208,6 +220,7 @@ def avg_frequencies(pit, start_date, start_time, end_date, end_time, channel, co
     ax.legend(loc = 'upper center', bbox_to_anchor = (.5, -.1), ncol = avg_freqs.shape[1])
     current = ax.get_position()
     ax.set_position([current.x0, current.y0 + current.width * .05, current.width, current.height * .95])
+    #Show if pic is True
     if(pic):
         plt.show()
     plt.close()
@@ -350,7 +363,7 @@ def plotInterval(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
     ax.set_position([current.x0, current.y0 + current.width * .3, current.width, current.height * .9])
     ax.set_xlim([0, len(h)])
     ax.set_ylim([0, .05])
-    #Plot W now
+    #Plot W
     ax = plt.subplot(122)
     ax.set_title("W", fontsize = 10)
     w = pickledData[2]
@@ -374,6 +387,45 @@ def plotInterval(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
     plt.show()
     #plt.savefig(st_date + 'T' + st_time + '.png', format='png', dpi = 500)
     plt.close()
+
+'''
+Used to run through command prompt instead of python console.
+'''
+def main():
+    params = input("Put in your parameters, separated by spaces.")
+    params = params.split()
+    if len(params) == 7:
+        done = False
+        answer = input("Do you want to save the results?")
+        while not done:
+            answer = input("")
+            if ('n' in answer or 'N' in answer) and not ('y' in answer or 'Y' in answer):
+                NMF_interval(params[0], params[1], params[2], params[3], params[4], params[5], params[6], False)
+                done = True
+            elif ('y' in answer or 'Y' in answer) and not ('n' in answer or 'N' in answer):
+                NMF_interval(params[0], params[1], params[2], params[3], params[4], params[5], params[6], True)
+                done = True
+            else:
+                print("UNCLEAR. Please type an answer with a 'y' in it for yes, or a 'n' in it for no.")
+                print("But, do not do both.")
+        answer = input("Do you want to run NMF on more data?")
+        if ('y' in answer or 'Y' in answer):
+            main()
+        else:
+            print("Exiting.")
+    else:
+        print("Called with wrong number of parameters.")
+        print("First parameter is the start date")
+        print("Second parameter is the start time")
+        print("Third parameter is end date")
+        print("Fourth parameter is end time")
+        print("Fifth parameter is the pit")
+        print("Sixth parameter is the channel")
+        print("Seventh parameter is the number of components")
+        main()
+
+if __name__ == "__main__":
+    main()
 
 '''
 -----------OLD FUNCTIONS-----------
@@ -777,9 +829,10 @@ def NMF_oldplotH(pit, date, hour, comp, dims = 2):
     plt.close()
 
 '''
-Used to run through command prompt instead of python console.
+The OLD main
+DO NOT USE!
 '''
-def main():
+def oldmain():
     answer = input("Are you using a time interval?")
     if 'n' in answer or 'N' in answer:
         params = input("Put in your parameters.")
@@ -815,7 +868,4 @@ def main():
         print("UNCLEAR. Please type an answer with a 'y' in it for yes, or a 'n' in it for no.")
         print("But, do not do both.")
         main()
-
-if __name__ == "__main__":
-    main()
 
