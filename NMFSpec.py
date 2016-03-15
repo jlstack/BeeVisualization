@@ -176,33 +176,40 @@ def avg_intensities(pit, start_date, start_time, end_date, end_time, channel, co
     #Get the elapsed time
     elapsed_time = Dates.time_diff(newstart_date, start_time, newend_date, end_time)
     hours_elapsed = math.ceil(elapsed_time / 3600)
-    days_elapsed = math.ceil(hours_elapsed / 24)
+    #days_elapsed = math.ceil(hours_elapsed / 24)
     save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + components + "comp/"
-    avg_freqs = np.zeros((24, 2))
     first_hour = int(start_time.split(':')[0])
-    col_counter = 0
+    avg_freqs = np.zeros((hours_elapsed + first_hour, 2))
     #Get data for each hour, and add it to the figure
     for i in range(first_hour, hours_elapsed + first_hour):
         intstr = "%02d" % (i % 24)
         path = save_dir + "NMFdata_" + intstr + ":00:00_" + start_date + "_" + intstr + ":59:59" + ".pkl"
-        if not os.path.isfile(path):
-            NMF_interval(newstart_date, intstr + ":00:00", newstart_date, intstr + ":59:59", pit, channel, components, True)
-        pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
-        H = pickledData[3]
-        H = np.asarray(H)
-        H = H.T
-        #Get frequency ranges 180-369 Hz and 370-559 Hz
-        avg_freqs[i, 0] = np.mean(H[180:370, :])
-        avg_freqs[i, 1] = np.mean(H[370:560, :])
-        col_counter += 1
-        #This doesn't work as I thought. Needs to be refactored, so that it increments for one day
-        if(i == 23):
-            Dates.add_seconds_to_date(newstart_date, start_time, 86400 - first_hour * 3600)
-        if(i % 24 == 23 and i != 23):
-            Dates.add_seconds_to_date(newstart_date, start_time, 86400)
+        try:
+            if not os.path.isfile(path):
+                NMF_interval(newstart_date, intstr + ":00:00", newstart_date, intstr + ":59:59", pit, channel, components, True)
+            pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
+            H = pickledData[3]
+            H = np.asarray(H)
+            H = H.T
+            #Get frequency ranges 180-369 Hz and 370-559 Hz
+            avg_freqs[i, 0] = np.mean(H[180:370, :])
+            avg_freqs[i, 1] = np.mean(H[370:560, :])
+            #This doesn't work as I thought. Needs to be refactored, so that it increments for one day
+            if(i == 23):
+                newstart_date, start_time = Dates.add_seconds_to_date(newstart_date, start_time, 86400 - first_hour * 3600)
+                start_date = newstart_date.split('-')[::-1]
+                start_date = '-'.join(start_date)
+                save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + components + "comp/"
+            if(i % 24 == 23 and i != 23):
+                newstart_date, start_time = Dates.add_seconds_to_date(newstart_date, start_time, 86400)
+                start_date = newstart_date.split('-')[::-1]
+                start_date = '-'.join(start_date)
+                save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + components + "comp/"
+        except:
+            print("Invalid data for " + newstart_date + " " + intstr + " hour")
     fig = plt.figure()
     ax = plt.subplot(111)
-    #Print out information pertaining to
+    #Print out information pertaining to day/night
     print('-----TIME SENSITIVE INTENSITIES-----')
     print('Low freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[8:22, 0], weights = avg_freqs[8:22, 0].astype(bool))))
     print('High freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[8:22, 1], weights = avg_freqs[8:22, 1].astype(bool))))
@@ -216,7 +223,7 @@ def avg_intensities(pit, start_date, start_time, end_date, end_time, channel, co
     plt.plot(avg_freqs[:,1], color = '#0088ff', label = '370 - 559 Hz')
     ax.xaxis.set_label_text("Time in Hours")
     ax.yaxis.set_label_text("Average Intensities")
-    plt.title("Average Frequencies for " + '-'.join(list(reversed(start_date.split("-")[0:2])))+"-"+"".join(start_date.split("-")[2]) + " " + start_time + " to " + '-'.join(list(reversed(end_date.split("-")[0:2])))+"-"+"".join(end_date.split("-")[2]) + " " + end_time)
+    plt.title("Average Intensities for " + '-'.join(list(reversed(start_date.split("-")[0:2])))+"-"+"".join(start_date.split("-")[2]) + " " + start_time + " to " + '-'.join(list(reversed(end_date.split("-")[0:2])))+"-"+"".join(end_date.split("-")[2]) + " " + end_time)
     ax.legend(loc = 'upper center', bbox_to_anchor = (.5, -.1), ncol = avg_freqs.shape[1])
     current = ax.get_position()
     ax.set_position([current.x0, current.y0 + current.width * .05, current.width, current.height * .95])
