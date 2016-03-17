@@ -150,7 +150,7 @@ def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, compo
     #Save the data if wanted
     if save is True:
         print("Saving results...")
-        pickle.dump(saveddata, open(save_dir + "NMFdata_" + start_time+ "_" + newend_date + "_" + end_time + ".pkl", "wb"), protocol = 2)
+        pickle.dump(saveddata, open(save_dir + "NMFdata_" + start_time + "_" + newend_date + "_" + end_time + ".pkl", "wb"), protocol = 2)
     print("Done.")
     print(time() - t0)
 
@@ -159,9 +159,9 @@ This function takes the two 'clusters' of data at approximately 180-369 Hz and 3
 intensities for the two 'clusters'.  Then, the two lines are plotted for the time interval given.
 
 The pit parameter is the pit to choose from.
-The start_date parameter is the date of the first file.
+The start_date parameter is the date of the first file. (DD-MM-YYYY)
 The start_time parameter is the start time of the first file.
-The end_date parameter is the date of the last file.
+The end_date parameter is the date of the last file. (DD-MM-YYYY)
 The end_time parameter is the start time of the last file.
 The channel parameter is left or right mic (ALWAYS left for pit2).
 The components parameter is the number of components.
@@ -173,12 +173,15 @@ def avg_intensities(pit, start_date, start_time, end_date, end_time, channel, co
     newstart_date = '-'.join(newstart_date)
     newend_date = end_date.split('-')[::-1]
     newend_date = '-'.join(newend_date)
+    graph_date = '-'.join(list(reversed(start_date.split("-")[0:2])))+"-"+"".join(start_date.split("-")[2])
+    graph_time = start_time
+    end_date = '-'.join(list(reversed(end_date.split("-")[0:2])))+"-"+"".join(end_date.split("-")[2])
     #Get the elapsed time
     elapsed_time = Dates.time_diff(newstart_date, start_time, newend_date, end_time)
     hours_elapsed = math.ceil(elapsed_time / 3600)
-    #days_elapsed = math.ceil(hours_elapsed / 24)
     save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + components + "comp/"
     first_hour = int(start_time.split(':')[0])
+    days_elapsed = math.ceil((hours_elapsed + first_hour) / 24)
     avg_freqs = np.zeros((hours_elapsed + first_hour, 2))
     #Get data for each hour, and add it to the figure
     for i in range(first_hour, hours_elapsed + first_hour):
@@ -194,27 +197,32 @@ def avg_intensities(pit, start_date, start_time, end_date, end_time, channel, co
             #Get frequency ranges 180-369 Hz and 370-559 Hz
             avg_freqs[i, 0] = np.mean(H[180:370, :])
             avg_freqs[i, 1] = np.mean(H[370:560, :])
-            #This doesn't work as I thought. Needs to be refactored, so that it increments for one day
-            if(i == 23):
-                newstart_date, start_time = Dates.add_seconds_to_date(newstart_date, start_time, 86400 - first_hour * 3600)
-                start_date = newstart_date.split('-')[::-1]
-                start_date = '-'.join(start_date)
-                save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + components + "comp/"
-            if(i % 24 == 23 and i != 23):
-                newstart_date, start_time = Dates.add_seconds_to_date(newstart_date, start_time, 86400)
-                start_date = newstart_date.split('-')[::-1]
-                start_date = '-'.join(start_date)
-                save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + components + "comp/"
         except:
             print("Invalid data for " + newstart_date + " " + intstr + " hour")
+        #Increments date for one day, and sets time to 00:00:00
+        if(i % 24 == 23):
+            print("Success for " + newstart_date)
+            if(i == 23):
+                newstart_date, start_time = Dates.add_seconds_to_date(newstart_date, start_time, 86400 - first_hour * 3600)
+            else:
+                newstart_date, start_time = Dates.add_seconds_to_date(newstart_date, start_time, 86400)
+            start_date = newstart_date.split('-')[::-1]
+            start_date = '-'.join(start_date)
+            save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + components + "comp/"
     fig = plt.figure()
     ax = plt.subplot(111)
-    #Print out information pertaining to day/night
-    print('-----TIME SENSITIVE INTENSITIES-----')
-    print('Low freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[8:22, 0], weights = avg_freqs[8:22, 0].astype(bool))))
-    print('High freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[8:22, 1], weights = avg_freqs[8:22, 1].astype(bool))))
-    print('Low freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[0:8, 0], avg_freqs[22:24, 0])))))
-    print('High freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[0:8, 1], avg_freqs[22:24, 1])))))
+    #Print out information pertaining to day/night for each day
+    for i in range(days_elapsed):
+        #8 AM of day i, 10 PM of day i, 12 AM of day i, and 12 AM for day i+1
+        ei = 24 * i + 8
+        tti = 24 * i + 22
+        zi = 24 * i
+        tfi = 24 * (i + 1)
+        print('-----TIME SENSITIVE INTENSITIES FOR DAY ' + str(i) + '-----')
+        print('Low freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[ei:tti, 0], weights = avg_freqs[ei:tti, 0].astype(bool))))
+        print('High freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[ei:tti, 1], weights = avg_freqs[ei:tti, 1].astype(bool))))
+        print('Low freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[zi:ei, 0], avg_freqs[tti:tfi, 0])))))
+        print('High freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[zi:ei, 1], avg_freqs[tti:tfi, 1])))))
     print('-----INTENSITY TOTALS-----')
     print('Low freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 0], weights = avg_freqs[:,0].astype(bool))))
     print('High freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 1], weights = avg_freqs[:,1].astype(bool))))
@@ -223,7 +231,7 @@ def avg_intensities(pit, start_date, start_time, end_date, end_time, channel, co
     plt.plot(avg_freqs[:,1], color = '#0088ff', label = '370 - 559 Hz')
     ax.xaxis.set_label_text("Time in Hours")
     ax.yaxis.set_label_text("Average Intensities")
-    plt.title("Average Intensities for " + '-'.join(list(reversed(start_date.split("-")[0:2])))+"-"+"".join(start_date.split("-")[2]) + " " + start_time + " to " + '-'.join(list(reversed(end_date.split("-")[0:2])))+"-"+"".join(end_date.split("-")[2]) + " " + end_time)
+    plt.title("Average Intensities for " + graph_date + " " + graph_time + " to " + end_date + " " + end_time)
     ax.legend(loc = 'upper center', bbox_to_anchor = (.5, -.1), ncol = avg_freqs.shape[1])
     current = ax.get_position()
     ax.set_position([current.x0, current.y0 + current.width * .05, current.width, current.height * .95])
@@ -236,16 +244,16 @@ def avg_intensities(pit, start_date, start_time, end_date, end_time, channel, co
 Visualize the W matrix using 2D histograms.
 
 The pit parameter is the pit to choose from.
-The st_date parameter is the date of the first file.
-The st_time parameter is the start time of the first file.
-The end_date parameter is the date of the last file.
+The start_date parameter is the date of the first file. (DD-MM-YYYY)
+The start_time parameter is the start time of the first file.
+The end_date parameter is the date of the last file. (DD-MM-YYYY)
 The end_time parameter is the last second desired.
 The comp parameter is the number of components.
 The dims parameter is the number of dimensions to visualize.
 '''
-def NMF_intplotW(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
+def NMF_intplotW(pit, start_date, start_time, end_date, end_time, comp, dims = 2):
      t0 = time()
-     path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + st_date + "/" + comp + "comp/NMFdata_" + st_time + '_' + end_date + "_" + end_time + ".pkl"
+     path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + comp + "comp/NMFdata_" + start_time + '_' + end_date + "_" + end_time + ".pkl"
      #Load the multiplied matrix
      pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
      components = pickledData[2]
@@ -272,7 +280,7 @@ def NMF_intplotW(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
           plt.ylim((0, maxht))
      else:
          plt.ylim((0, .01))
-     plt.title("Density Plots of W for " + st_date + " " + st_time + " to " + end_date + " " + end_time, fontsize = 20)
+     plt.title("Density Plots of W for " + start_date + " " + start_time + " to " + end_date + " " + end_time, fontsize = 20)
      print("Time to graph items: " + str(time() - t0) + " sec.")
      plt.show()
      plt.close()
@@ -281,16 +289,16 @@ def NMF_intplotW(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
 Visualize the H matrix of the NMF using a density plot.
 
 The pit parameter is the pit to choose from.
-The st_date parameter is the date of the first file.
-The st_time parameter is the start time of the first file.
-The end_date parameter is the date of the last file.
+The start_date parameter is the date of the first file. (DD-MM-YYYY)
+The start_time parameter is the start time of the first file.
+The end_date parameter is the date of the last file. (DD-MM-YYYY)
 The end_time parameter is the last second desired.
 The comp parameter is the number of components.
 The dims parameter is the number of dimensions to visualize.
 '''
-def NMF_intplotH(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
+def NMF_intplotH(pit, start_date, start_time, end_date, end_time, comp, dims = 2):
     t0 = time()
-    path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + st_date + "/" + comp + "comp/NMFdata_" + st_time + '_' + end_date + "_" + end_time + ".pkl"
+    path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + comp + "comp/NMFdata_" + start_time + '_' + end_date + "_" + end_time + ".pkl"
     #Load the multiplied matrix
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
     components = pickledData[3]
@@ -319,7 +327,7 @@ def NMF_intplotH(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
         plt.ylim((0, maxht))
     else:
         plt.ylim((0, .05))
-    plt.title("Density Plots of H for " + st_date + " " + st_time + " to " + end_date + " " + end_time, fontsize = 20)
+    plt.title("Density Plots of H for " + start_date + " " + start_time + " to " + end_date + " " + end_time, fontsize = 20)
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
     plt.close()
@@ -342,15 +350,15 @@ def colormap_lines(lim):
 This function plots both H and W side by side.  This becomes useful for comparative purposes.
 
 The pit parameter is the pit to choose from.
-The st_date parameter is the date of the first file.
-The st_time parameter is the start time of the first file.
+The start_date parameter is the date of the first file.
+The start_time parameter is the start time of the first file.
 The end_date parameter is the date of the last file.
 The end_time parameter is the last second desired.
 The comp parameter is the number of components.
 The dims parameter is the number of dimensions to visualize.
 '''
-def plotInterval(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
-    path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + st_date + "/" + comp + "comp/NMFdata_" + st_time + '_' + end_date + "_" + end_time + ".pkl"
+def plotInterval(pit, start_date, start_time, end_date, end_time, comp, dims = 2):
+    path = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + start_date + "/" + comp + "comp/NMFdata_" + start_time + '_' + end_date + "_" + end_time + ".pkl"
     pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
     h = pickledData[3]
     h = np.asarray(h)
@@ -390,9 +398,9 @@ def plotInterval(pit, st_date, st_time, end_date, end_time, comp, dims = 2):
     ax.set_ylim([0, .01])
     #Plot the legend underneath the x-axis
     plt.legend(loc = 'upper center', bbox_to_anchor = (-.1, -.08), ncol = math.floor(math.sqrt(dims)+1))
-    plt.suptitle("Graph of " + st_date + " " + st_time + " to " + end_date + " " + end_time , fontsize = 12)
+    plt.suptitle("Graph of " + start_date + " " + start_time + " to " + end_date + " " + end_time , fontsize = 12)
     plt.show()
-    #plt.savefig(st_date + 'T' + st_time + '.png', format='png', dpi = 500)
+    #plt.savefig(start_date + 'T' + start_time + '.png', format='png', dpi = 500)
     plt.close()
 
 '''
