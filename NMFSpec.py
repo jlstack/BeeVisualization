@@ -221,8 +221,16 @@ def avg_intensities(pit, start_date, start_time, end_date, end_time, channel, co
         print('-----TIME SENSITIVE INTENSITIES FOR DAY ' + str(i) + '-----')
         print('Low freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[ei:tti, 0], weights = avg_freqs[ei:tti, 0].astype(bool))))
         print('High freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[ei:tti, 1], weights = avg_freqs[ei:tti, 1].astype(bool))))
-        print('Low freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[zi:ei, 0], avg_freqs[tti:tfi, 0])))))
-        print('High freqs night: ' + '{:.7f}'.format(np.mean(np.hstack((avg_freqs[zi:ei, 1], avg_freqs[tti:tfi, 1])))))
+        night0 = np.hstack((avg_freqs[zi:ei, 0], avg_freqs[tti:tfi, 0]))
+        night1 = np.hstack((avg_freqs[zi:ei, 1], avg_freqs[tti:tfi, 1]))
+        try:
+            lownight = np.average(night0[:], weights = night0[:].astype(bool))
+            hinight = np.average(night1[:], weights = night1[:].astype(bool))
+        except:
+            lownight = 0
+            hinight = 0
+        print('Low freqs night: ' + '{:.7f}'.format(lownight))
+        print('High freqs night: ' + '{:.7f}'.format(hinight))
     print('-----INTENSITY TOTALS-----')
     print('Low freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 0], weights = avg_freqs[:,0].astype(bool))))
     print('High freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 1], weights = avg_freqs[:,1].astype(bool))))
