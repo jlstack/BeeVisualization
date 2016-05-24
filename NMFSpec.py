@@ -385,7 +385,8 @@ def plotInterval(pit, start_date, start_time, end_date, end_time, comp, dims = 2
     current = ax.get_position()
     ax.set_position([current.x0, current.y0 + current.width * .3, current.width, current.height * .9])
     ax.set_xlim([0, len(h)])
-    ax.set_ylim([0, 1])
+    if np.amax(h[:,:dims]) > 1:
+        ax.set_ylim([0, 1])
     #Plot W
     ax = plt.subplot(122)
     ax.set_title("W", fontsize = 10)
@@ -403,7 +404,8 @@ def plotInterval(pit, start_date, start_time, end_date, end_time, comp, dims = 2
     current = ax.get_position()
     ax.set_position([current.x0, current.y0 + current.width * .3, current.width, current.height * .9])
     ax.set_xlim([0, len(w)])
-    ax.set_ylim([0, 1])
+    if np.amax(w[:,:dims]) > 1:
+        ax.set_ylim([0, 1])
     #Plot the legend underneath the x-axis
     plt.legend(loc = 'upper center', bbox_to_anchor = (-.1, -.08), ncol = math.floor(math.sqrt(dims)+1))
     plt.suptitle("Graph of " + start_date + " " + start_time + " to " + end_date + " " + end_time , fontsize = 12)
