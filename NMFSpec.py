@@ -284,10 +284,10 @@ def NMF_intplotW(pit, start_date, start_time, end_date, end_time, comp, dims = 2
      plt.xlim((0, len(components)))
      #Limit the y-axis to the same scale for each subplot
      maxht = np.amax(components[:, :dims])
-     if np.amax(maxht) < .01:
-          plt.ylim((0, maxht))
+     if np.amax(maxht) < 1:
+         plt.ylim((0, maxht))
      else:
-         plt.ylim((0, .01))
+         plt.ylim((0, 1))
      plt.title("Density Plots of W for " + start_date + " " + start_time + " to " + end_date + " " + end_time, fontsize = 20)
      print("Time to graph items: " + str(time() - t0) + " sec.")
      plt.show()
@@ -331,10 +331,10 @@ def NMF_intplotH(pit, start_date, start_time, end_date, end_time, comp, dims = 2
     plt.xlim((0, len(components)))
     #Limit the y-axis to the same scale for each subplot
     maxht = np.amax(components[:, :dims])
-    if np.amax(maxht) < .05:
+    if np.amax(maxht) < 1:
         plt.ylim((0, maxht))
     else:
-        plt.ylim((0, .05))
+        plt.ylim((0, 1))
     plt.title("Density Plots of H for " + start_date + " " + start_time + " to " + end_date + " " + end_time, fontsize = 20)
     print("Time to graph items: " + str(time() - t0) + " sec.")
     plt.show()
@@ -385,7 +385,7 @@ def plotInterval(pit, start_date, start_time, end_date, end_time, comp, dims = 2
     current = ax.get_position()
     ax.set_position([current.x0, current.y0 + current.width * .3, current.width, current.height * .9])
     ax.set_xlim([0, len(h)])
-    ax.set_ylim([0, .05])
+    ax.set_ylim([0, 1])
     #Plot W
     ax = plt.subplot(122)
     ax.set_title("W", fontsize = 10)
@@ -403,7 +403,7 @@ def plotInterval(pit, start_date, start_time, end_date, end_time, comp, dims = 2
     current = ax.get_position()
     ax.set_position([current.x0, current.y0 + current.width * .3, current.width, current.height * .9])
     ax.set_xlim([0, len(w)])
-    ax.set_ylim([0, .01])
+    ax.set_ylim([0, 1])
     #Plot the legend underneath the x-axis
     plt.legend(loc = 'upper center', bbox_to_anchor = (-.1, -.08), ncol = math.floor(math.sqrt(dims)+1))
     plt.suptitle("Graph of " + start_date + " " + start_time + " to " + end_date + " " + end_time , fontsize = 12)
