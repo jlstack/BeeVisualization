@@ -104,7 +104,8 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     new_spec = np.nan_to_num(new_spec)
     new_spec = (new_spec - np.amin(new_spec)) / (np.amax(new_spec) - np.amin(new_spec))
     #Set the intensity of 0 Hz to 0, as there is an odd spike that throws the NMF off at 0 Hz
-    new_spec[0] = 0;
+    new_spec[0] = 0
+    new_spec[:123] = 0
     return new_spec
 
 """
@@ -155,6 +156,43 @@ def NMF_interval(start_date, start_time, end_date, end_time, pit, channel, compo
     print(time() - t0)
 
 """
+This function computes NMF on a time interval.  The 2D matrix of data used to compute NMF is returned.
+
+The date parameter is the date of the desired analysis.
+The start_time parameter is the start time of the desired interval.
+The pit parameter is the pit to choose from.
+The channel parameter is left or right mic (ALWAYS left for pit2).
+The components parameter is the number of components for the nonnegative matrix factorization.
+The save parameter is whether or not to save. Default is false.
+"""
+def implemented_NMF(date, start_time, pit, channel, components, save = False):
+    new_date = date.split('-')[::-1]
+    new_date = '-'.join(new_date)
+    save_dir = "/usr/local/bee/beemon/beeW/Chris/" + pit + "/" + new_date + "/" + components + "comp/"
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+    components = int(components)
+    end_time = start_time.split(':')[0] + ":59:59"
+    #Get the spectrograms as a 2D array, and transpose it so the ind. sound sources are found with NMF
+    data = create_specgrams(date, start_time, date, end_time, pit, channel).T
+    print("Data has shape: " + str(data.shape))
+    t0 = time()
+    #NMF algorithm
+    np.random.seed(327)
+    w = np.random.rand(len(data), components)
+    h = np.random.rand(components, len(data[0]))
+    print(str(w.shape) + " " + str(h.shape))
+    estimated_a = np.dot(w,h)
+    print("NMF complete.")
+    #Save if wanted to be saved
+    if save is True:
+        print("Saving results...")
+        pickle.dump(saveddata, open(save_dir + "NMFdata_" + start_time + "_" + date + "_" + end_time + ".pkl", "wb"), protocol = 2)
+    print("Done in " + str("%.3f" % float(time() - t0)) + " seconds")
+    return estimated_a
+
+
+"""
 This function takes the two 'clusters' of data at approximately 180-369 Hz and 370-559 Hz, and averages the
 intensities for the two 'clusters'.  Then, the two lines are plotted for the time interval given.
 
@@ -188,7 +226,7 @@ def avg_intensities(pit, start_date, start_time, end_date, end_time, channel, co
         intstr = "%02d" % (i % 24)
         path = save_dir + "NMFdata_" + intstr + ":00:00_" + start_date + "_" + intstr + ":59:59" + ".pkl"
         try:
-            if not os.path.isfile(path):
+            if not os.path.isfile(path) or os.path.isfile(path):
                 NMF_interval(newstart_date, intstr + ":00:00", newstart_date, intstr + ":59:59", pit, channel, components, True)
             pickledData = pickle.load(open(path, 'rb'), encoding = 'bytes')
             H = pickledData[3]
