@@ -178,18 +178,40 @@ def implemented_NMF(date, start_time, pit, channel, components, save = False):
     print("Data has shape: " + str(data.shape))
     t0 = time()
     #NMF algorithm
+    a = 0.0002
+    b = 0.02
+    thres = 10000
     np.random.seed(327)
     w = np.random.rand(len(data), components)
     h = np.random.rand(components, len(data[0]))
-    print(str(w.shape) + " " + str(h.shape))
-    estimated_a = np.dot(w,h)
+    for iteration in range(100):
+        print("Iteration " + str(iteration))
+        error = 0
+        estimated = np.dot(w, h)
+        for i in range(len(data)):
+            for j in range(len(data[0])):
+                if data[i][j] != 0:
+                    ind_error = data[i][j] - estimated[i][j]
+                    error += math.pow(ind_error, 2)
+                    for k in range(components):
+                        w[i][k] += a * (2 * ind_error * h[k][j] - b * w[i][k])
+                        h[k][j] += a * (2 * ind_error * w[i][k] - b * h[k][j])
+                        if w[i][k] < 0:
+                            w[i][k] = 0
+                        if h[k][j] < 0:
+                            h[k][j] = 0
+                        error += ((b / 2) * (math.pow(w[i][k], 2) + math.pow(h[k][j], 2)))
+        print("Error: %.3f" % error)
+        if error < thres:
+            break
     print("NMF complete.")
+    saveddata = [estimated, w, h]
     #Save if wanted to be saved
     if save is True:
         print("Saving results...")
-        pickle.dump(saveddata, open(save_dir + "NMFdata_" + start_time + "_" + date + "_" + end_time + ".pkl", "wb"), protocol = 2)
+        pickle.dump(saveddata, open(save_dir + "NMFdata_" + start_time + "_" + new_date + "_" + end_time + ".pkl", "wb"), protocol = 2)
     print("Done in " + str("%.3f" % float(time() - t0)) + " seconds")
-    return estimated_a
+    return estimated
 
 
 """
