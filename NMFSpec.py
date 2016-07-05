@@ -105,7 +105,7 @@ def create_specgrams(start_date, start_time, end_date, end_time, pit, channel):
     new_spec = (new_spec - np.amin(new_spec)) / (np.amax(new_spec) - np.amin(new_spec))
     #Set the intensity of 0 Hz to 0, as there is an odd spike that throws the NMF off at 0 Hz
     new_spec[0] = 0
-    new_spec[:123] = 0
+    #new_spec[:123] = 0
     return new_spec
 
 """
@@ -180,7 +180,7 @@ def implemented_NMF(date, start_time, pit, channel, components, save = False):
     #NMF algorithm
     a = 0.0002
     b = 0.02
-    thres = 10000
+    thres = 3000
     np.random.seed(327)
     w = np.random.rand(len(data), components)
     h = np.random.rand(components, len(data[0]))
@@ -196,16 +196,18 @@ def implemented_NMF(date, start_time, pit, channel, components, save = False):
                     for k in range(components):
                         w[i][k] += a * (2 * ind_error * h[k][j] - b * w[i][k])
                         h[k][j] += a * (2 * ind_error * w[i][k] - b * h[k][j])
+                        
                         if w[i][k] < 0:
                             w[i][k] = 0
                         if h[k][j] < 0:
                             h[k][j] = 0
+                       
                         error += ((b / 2) * (math.pow(w[i][k], 2) + math.pow(h[k][j], 2)))
         print("Error: %.3f" % error)
         if error < thres:
             break
     print("NMF complete.")
-    saveddata = [estimated, w, h]
+    saveddata = [estimated, error, w, h]
     #Save if wanted to be saved
     if save is True:
         print("Saving results...")
