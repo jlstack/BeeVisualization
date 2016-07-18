@@ -475,6 +475,13 @@ def plotInterval(pit, start_date, start_time, end_date, end_time, comp, dims = 2
     #plt.savefig(start_date + 'T' + start_time + '.png', format='png', dpi = 500)
     plt.close()
 
+
+def plotDay(pit, date, startTime, endTime, comp, dims=2):
+    for i in range(startTime, endTime):
+        plotInterval(pit, date, str("%02d" % i) + ":00:00", date, str("%02d" % i) + ":59:59", comp, dims)
+
+
+
 '''
 Used to run through command prompt instead of python console.
 '''
