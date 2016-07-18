@@ -298,7 +298,7 @@ def avg_intensities(pit, start_date, start_time, end_date, end_time, channel, co
         print('Low freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 0], weights = avg_freqs[:,0].astype(bool))))
         print('High freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 1], weights = avg_freqs[:,1].astype(bool))))
     except:
-        continue
+        print("Can't do intensity calculations...")
     #Plot both frequency ranges
     plt.plot(avg_freqs[:,0], color = '#ff8800', label = '180 - 369 Hz')
     plt.plot(avg_freqs[:,1], color = '#0088ff', label = '370 - 559 Hz')
