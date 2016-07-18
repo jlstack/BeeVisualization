@@ -274,28 +274,31 @@ def avg_intensities(pit, start_date, start_time, end_date, end_time, channel, co
     fig = plt.figure()
     ax = plt.subplot(111)
     #Print out information pertaining to day/night for each day
-    for i in range(days_elapsed):
-        #8 AM of day i, 10 PM of day i, 12 AM of day i, and 12 AM for day i+1
-        ei = 24 * i + 8
-        tti = 24 * i + 22
-        zi = 24 * i
-        tfi = 24 * (i + 1)
-        print('-----TIME SENSITIVE INTENSITIES FOR DAY ' + str(i) + '-----')
-        print('Low freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[ei:tti, 0], weights = avg_freqs[ei:tti, 0].astype(bool))))
-        print('High freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[ei:tti, 1], weights = avg_freqs[ei:tti, 1].astype(bool))))
-        night0 = np.hstack((avg_freqs[zi:ei, 0], avg_freqs[tti:tfi, 0]))
-        night1 = np.hstack((avg_freqs[zi:ei, 1], avg_freqs[tti:tfi, 1]))
-        try:
-            lownight = np.average(night0[:], weights = night0[:].astype(bool))
-            hinight = np.average(night1[:], weights = night1[:].astype(bool))
-        except:
-            lownight = 0
-            hinight = 0
-        print('Low freqs night: ' + '{:.7f}'.format(lownight))
-        print('High freqs night: ' + '{:.7f}'.format(hinight))
-    print('-----INTENSITY TOTALS-----')
-    print('Low freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 0], weights = avg_freqs[:,0].astype(bool))))
-    print('High freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 1], weights = avg_freqs[:,1].astype(bool))))
+    try:
+        for i in range(days_elapsed):
+            #8 AM of day i, 10 PM of day i, 12 AM of day i, and 12 AM for day i+1
+            ei = 24 * i + 8
+            tti = 24 * i + 22
+            zi = 24 * i
+            tfi = 24 * (i + 1)
+            print('-----TIME SENSITIVE INTENSITIES FOR DAY ' + str(i) + '-----')
+            print('Low freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[ei:tti, 0], weights = avg_freqs[ei:tti, 0].astype(bool))))
+            print('High freqs day: ' + '{:.7f}'.format(np.average(avg_freqs[ei:tti, 1], weights = avg_freqs[ei:tti, 1].astype(bool))))
+            night0 = np.hstack((avg_freqs[zi:ei, 0], avg_freqs[tti:tfi, 0]))
+            night1 = np.hstack((avg_freqs[zi:ei, 1], avg_freqs[tti:tfi, 1]))
+            try:
+                lownight = np.average(night0[:], weights = night0[:].astype(bool))
+                hinight = np.average(night1[:], weights = night1[:].astype(bool))
+            except:
+                lownight = 0
+                hinight = 0
+            print('Low freqs night: ' + '{:.7f}'.format(lownight))
+            print('High freqs night: ' + '{:.7f}'.format(hinight))
+        print('-----INTENSITY TOTALS-----')
+        print('Low freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 0], weights = avg_freqs[:,0].astype(bool))))
+        print('High freqs total: ' + '{:.7f}'.format(np.average(avg_freqs[:, 1], weights = avg_freqs[:,1].astype(bool))))
+    except:
+        continue
     #Plot both frequency ranges
     plt.plot(avg_freqs[:,0], color = '#ff8800', label = '180 - 369 Hz')
     plt.plot(avg_freqs[:,1], color = '#0088ff', label = '370 - 559 Hz')
